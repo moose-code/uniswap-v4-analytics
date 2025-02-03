@@ -18,5 +18,9 @@
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "framer-motion": "^12.0.11",
+    "graphql-request": "^7.1.2"
   }
 }
