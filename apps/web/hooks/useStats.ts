@@ -25,7 +25,7 @@ export function useStats() {
     fetchData();
 
     // Poll every 250 milliseconds
-    const interval = setInterval(fetchData, 250);
+    const interval = setInterval(fetchData, 1000);
 
     return () => clearInterval(interval);
   }, []);

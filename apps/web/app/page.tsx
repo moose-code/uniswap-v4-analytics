@@ -32,19 +32,21 @@ export default function Page() {
   const maxSwaps = parseInt(sortedStats[0]?.numberOfSwaps ?? "0");
 
   return (
-    <div className="flex items-center justify-center min-h-svh">
-      <div className="w-full max-w-3xl space-y-4 p-8">
-        <h1 className="text-2xl font-bold mb-8">
+    <div className="flex items-center justify-center min-h-svh p-4">
+      <div className="w-full max-w-3xl space-y-4">
+        <h1 className="text-xl md:text-2xl font-bold mb-8 text-center">
           Swaps Leaderboard (Uniswap v4)
         </h1>
-        {sortedStats.map((stat) => (
-          <AnimatedBar
-            key={stat.id}
-            label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
-            value={parseInt(stat.numberOfSwaps)}
-            maxValue={maxSwaps}
-          />
-        ))}
+        <div className="space-y-3">
+          {sortedStats.map((stat) => (
+            <AnimatedBar
+              key={stat.id}
+              label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
+              value={parseInt(stat.numberOfSwaps)}
+              maxValue={maxSwaps}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
