@@ -14,11 +14,11 @@ export function AnimatedBar({ label, value, maxValue }: AnimatedBarProps) {
   const previousValueRef = useRef(value);
   const width = (value / maxValue) * 100;
 
-  // Smooth spring animation for the bar
+  // More responsive spring animation for the bar
   const springValue = useSpring(0, {
-    stiffness: 60,
-    damping: 15,
-    mass: 0.5,
+    stiffness: 80, // Increased stiffness for more "snappy" movement
+    damping: 12, // Reduced damping for more "bounce"
+    mass: 0.3, // Reduced mass for quicker response
   });
   const barWidth = useTransform(springValue, [0, 100], ["0%", "100%"]);
 
@@ -26,14 +26,13 @@ export function AnimatedBar({ label, value, maxValue }: AnimatedBarProps) {
     springValue.set(width);
   }, [width, springValue]);
 
-  // Smooth counter animation from previous value
   useEffect(() => {
     const node = numberRef.current;
     if (!node) return;
 
     const controls = animate(previousValueRef.current, value, {
-      duration: 0.8,
-      ease: "easeOut",
+      duration: 1.2, // Slightly longer duration
+      ease: [0.32, 0.72, 0, 1], // Custom easing for more "punch"
       onUpdate(value) {
         node.textContent = Math.round(value).toLocaleString();
       },
@@ -44,14 +43,38 @@ export function AnimatedBar({ label, value, maxValue }: AnimatedBarProps) {
   }, [value]);
 
   return (
-    <div className="flex items-center gap-4 w-full">
+    <div className="flex items-center gap-4 w-full group">
       <div className="w-24 text-sm font-mono">{label}</div>
       <div className="flex-1 bg-secondary h-8 rounded-md overflow-hidden">
-        <motion.div className="h-full bg-primary" style={{ width: barWidth }} />
+        <motion.div
+          className="h-full bg-primary relative"
+          style={{ width: barWidth }}
+        >
+          {/* Optional: Animated gradient overlay */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            initial={{ x: "-100%" }}
+            animate={{
+              x: "100%",
+              transition: {
+                repeat: Infinity,
+                duration: 2,
+                ease: "linear",
+              },
+            }}
+          />
+        </motion.div>
       </div>
-      <div ref={numberRef} className="w-32 text-right font-mono tabular-nums">
+      <motion.div
+        ref={numberRef}
+        className="w-32 text-right font-mono tabular-nums"
+        animate={{
+          scale: value > previousValueRef.current ? [1, 1.06, 1] : 1,
+        }}
+        transition={{ duration: 0.3 }}
+      >
         {value.toLocaleString()}
-      </div>
+      </motion.div>
     </div>
   );
 }
