@@ -35,7 +35,7 @@ export default function Page() {
     <div className="flex items-center justify-center min-h-svh">
       <div className="w-full max-w-3xl space-y-4 p-8">
         <h1 className="text-2xl font-bold mb-8">
-          Uniswap V4: Swaps Per Network Leaderboard
+          Swaps Leaderboard (Uniswap v4)
         </h1>
         {sortedStats.map((stat) => (
           <AnimatedBar
