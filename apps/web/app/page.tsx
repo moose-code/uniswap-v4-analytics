@@ -2,6 +2,7 @@
 
 import { useStats } from "@/hooks/useStats";
 import { AnimatedBar } from "@/components/AnimatedBar";
+import { StatsSummary } from "@/components/StatsSummary";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -24,16 +25,35 @@ export default function Page() {
     );
   }
 
-  // Sort stats by number of swaps in descending order
   const sortedStats = [...stats.GlobalStats].sort(
     (a, b) => parseInt(b.numberOfSwaps) - parseInt(a.numberOfSwaps)
   );
 
-  const maxSwaps = parseInt(sortedStats[0]?.numberOfSwaps ?? "0");
-  const maxPools = Math.max(
-    ...sortedStats.map((stat) => parseInt(stat.numberOfPools ?? "0")),
-    1 // Prevent division by zero
+  const totalSwaps = sortedStats.reduce(
+    (acc, stat) => acc + parseInt(stat.numberOfSwaps),
+    0
   );
+  const totalPools = sortedStats.reduce(
+    (acc, stat) => acc + parseInt(stat.numberOfPools),
+    0
+  );
+
+  const globalStats = {
+    totalSwaps,
+    totalPools,
+    avgSwapsPerPool: totalPools > 0 ? totalSwaps / totalPools : 0,
+  };
+
+  const networkStats = sortedStats.map((stat) => ({
+    id: stat.id,
+    name: NETWORK_NAMES[stat.id] || `Chain ${stat.id}`,
+    swaps: parseInt(stat.numberOfSwaps),
+    pools: parseInt(stat.numberOfPools),
+    avgSwapsPerPool:
+      parseInt(stat.numberOfPools) > 0
+        ? parseInt(stat.numberOfSwaps) / parseInt(stat.numberOfPools)
+        : 0,
+  }));
 
   return (
     <div className="flex flex-col min-h-svh">
@@ -42,15 +62,16 @@ export default function Page() {
           <h1 className="text-xl md:text-2xl font-bold mb-8 text-center">
             Uniswap v4 Leaderboard
           </h1>
+          <StatsSummary globalStats={globalStats} networkStats={networkStats} />
           <div className="space-y-3">
             {sortedStats.map((stat) => (
               <AnimatedBar
                 key={stat.id}
                 label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
                 value={parseInt(stat.numberOfSwaps)}
-                maxValue={maxSwaps}
+                maxValue={totalSwaps}
                 pools={parseInt(stat.numberOfPools ?? "0")}
-                maxPools={maxPools}
+                maxPools={totalPools}
               />
             ))}
           </div>
