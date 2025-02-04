@@ -5,6 +5,7 @@ interface Stats {
   GlobalStats: {
     id: string;
     numberOfSwaps: string;
+    numberOfPools: string;
   }[];
   chain_metadata: {
     chain_id: number;

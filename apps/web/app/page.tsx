@@ -30,13 +30,17 @@ export default function Page() {
   );
 
   const maxSwaps = parseInt(sortedStats[0]?.numberOfSwaps ?? "0");
+  const maxPools = Math.max(
+    ...sortedStats.map((stat) => parseInt(stat.numberOfPools ?? "0")),
+    1 // Prevent division by zero
+  );
 
   return (
     <div className="flex flex-col min-h-svh">
       <div className="flex items-center justify-center flex-1 p-4">
         <div className="w-full max-w-3xl space-y-4">
           <h1 className="text-xl md:text-2xl font-bold mb-8 text-center">
-            Swaps Leaderboard (Uniswap v4)
+            Uniswap v4 Leaderboard
           </h1>
           <div className="space-y-3">
             {sortedStats.map((stat) => (
@@ -45,6 +49,8 @@ export default function Page() {
                 label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
                 value={parseInt(stat.numberOfSwaps)}
                 maxValue={maxSwaps}
+                pools={parseInt(stat.numberOfPools ?? "0")}
+                maxPools={maxPools}
               />
             ))}
           </div>
