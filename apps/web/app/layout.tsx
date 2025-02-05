@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import "@workspace/ui/globals.css";
 import { Providers } from "@/components/providers";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({
       >
         <Providers>{children}</Providers>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
