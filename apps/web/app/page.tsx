@@ -12,6 +12,10 @@ const NETWORK_NAMES: Record<string, string> = {
   "8453": "Base",
   "81457": "Blast",
   "7777777": "Zora",
+  "56": "BSC",
+  "43114": "Avalanche",
+  "57073": "Ink",
+  "1868": "Soneium",
 };
 
 export default function Page() {
