@@ -24,8 +24,8 @@ const NETWORK_NAMES: Record<string, string> = {
 };
 
 const TABS = [
-  { id: "overview", label: "Overview" },
-  { id: "hooks", label: "Hook Stats" },
+  { id: "overview", label: "Network Activity" },
+  { id: "hooks", label: "Hook Usage" },
 ];
 
 type GlobalStat = {
