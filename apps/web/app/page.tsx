@@ -24,8 +24,8 @@ const NETWORK_NAMES: Record<string, string> = {
 };
 
 const TABS = [
-  { id: "overview", label: "Network Activity" },
-  { id: "hooks", label: "Hook Usage" },
+  { id: "overview", label: "Swaps" },
+  { id: "hooks", label: "Hooks" },
 ];
 
 type GlobalStat = {
@@ -187,25 +187,25 @@ export default function Page() {
           </TabsContainer>
         </div>
       </div>
-      <footer className="mt-8 text-center text-sm text-muted-foreground space-y-1">
+      <footer className="mt-8 text-center text-sm text-muted-foreground pb-4">
         <p>
+          Data indexed by{" "}
           <a
-            href="https://envio.dev/app/moose-code/uniswap-v4-indexer/"
+            href="https://docs.envio.dev/docs/HyperIndex/overview"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline"
+            className="text-primary/70 hover:text-primary transition-colors"
           >
-            View Indexed Data
-          </a>
-        </p>
-        <p>
+            HyperIndex
+          </a>{" "}
+          on{" "}
           <a
-            href="https://github.com/moose-code/uniswap-v4-analytics"
+            href="https://envio.dev"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline"
+            className="text-primary/70 hover:text-primary transition-colors"
           >
-            Contributions Welcome
+            envio.dev
           </a>
         </p>
       </footer>

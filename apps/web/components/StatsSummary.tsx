@@ -103,6 +103,10 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
           ref={poolsRef}
           className="text-2xl font-mono tabular-nums"
           animate={{
+            scale:
+              previousValues.current.pools < globalStats.totalPools
+                ? [1, 1.06, 1]
+                : 1,
             color:
               previousValues.current.pools < globalStats.totalPools
                 ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
