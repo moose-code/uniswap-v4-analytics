@@ -1,7 +1,7 @@
 import { GraphQLClient } from "graphql-request";
 
 export const graphqlClient = new GraphQLClient(
-  "https://indexer.dev.hyperindex.xyz/19a566b/v1/graphql"
+  "https://indexer.dev.hyperindex.xyz/d1cbd01/v1/graphql"
 );
 
 export const STATS_QUERY = `
@@ -10,6 +10,15 @@ export const STATS_QUERY = `
       id
       numberOfSwaps
       numberOfPools
+      hookedPools
+      hookedSwaps
+    }
+    HookStats {
+      id
+      chainId
+      numberOfPools
+      numberOfSwaps
+      firstPoolCreatedAt
     }
     chain_metadata {
       chain_id
