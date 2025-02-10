@@ -26,3 +26,18 @@ export const STATS_QUERY = `
     }
   }
 `;
+
+export const POOLS_QUERY = `
+  query myQuery {
+    Pool(order_by: {numberOfSwaps: desc}, limit: 100) {
+      chainId
+      fee
+      hooks
+      id
+      numberOfSwaps
+      tickSpacing
+      currency1
+      currency0
+    }
+  }
+`;
