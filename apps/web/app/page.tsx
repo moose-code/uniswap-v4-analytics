@@ -26,7 +26,6 @@ const NETWORK_NAMES: Record<string, string> = {
 
 const TABS = [
   { id: "overview", label: "Swaps" },
-  { id: "hooks", label: "Hooks" },
   { id: "pools", label: "Pools" },
 ];
 
@@ -41,6 +40,7 @@ type GlobalStat = {
 export default function Page() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showAllNetworks, setShowAllNetworks] = useState(false);
+  const [showHooksMode, setShowHooksMode] = useState(false);
   const stats = useStats();
 
   if (!stats) {
@@ -102,70 +102,113 @@ export default function Page() {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <StatsSummary
-                    globalStats={globalStats}
-                    networkStats={networkStats}
-                  />
-                  <div className="space-y-3">
-                    {sortedStats.map((stat) => (
-                      <AnimatedBar
-                        key={stat.id}
-                        label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
-                        value={parseInt(stat.numberOfSwaps)}
-                        maxValue={totalSwaps}
-                        pools={parseInt(stat.numberOfPools)}
-                        maxPools={totalPools}
-                        mode="overview"
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-              {activeTab === "hooks" && (
-                <motion.div
-                  key="hooks"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <HookStatsSummary
-                    globalStats={{
-                      totalSwaps,
-                      hookedSwaps: sortedStats.reduce(
-                        (acc, stat) => acc + parseInt(stat.hookedSwaps ?? "0"),
-                        0
-                      ),
-                      totalPools,
-                      hookedPools: sortedStats.reduce(
-                        (acc, stat) => acc + parseInt(stat.hookedPools ?? "0"),
-                        0
-                      ),
-                    }}
-                  />
-                  <div className="space-y-3">
-                    {sortedStats
-                      .sort(
-                        (a, b) =>
-                          parseInt(b.hookedSwaps ?? "0") -
-                          parseInt(a.hookedSwaps ?? "0")
-                      )
-                      .slice(0, showAllNetworks ? undefined : 3)
-                      .map((stat) => (
-                        <AnimatedBar
-                          key={stat.id}
-                          label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
-                          value={parseInt(stat.numberOfSwaps)}
-                          maxValue={totalSwaps}
-                          pools={parseInt(stat.numberOfPools)}
-                          maxPools={totalPools}
-                          mode="hooks"
-                          hookedSwaps={parseInt(stat.hookedSwaps ?? "0")}
-                          hookedPools={parseInt(stat.hookedPools ?? "0")}
+                  <div className="flex justify-end mb-6">
+                    <button
+                      onClick={() => setShowHooksMode(!showHooksMode)}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-secondary/30 hover:bg-secondary/50 transition-colors text-xs font-medium"
+                    >
+                      <span
+                        className={
+                          !showHooksMode
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        Swaps
+                      </span>
+                      <div
+                        className={`w-6 h-3 rounded-full transition-colors ${
+                          showHooksMode ? "bg-primary" : "bg-secondary"
+                        } relative`}
+                      >
+                        <motion.div
+                          className="absolute top-0.5 left-0.5 w-2 h-2 bg-background rounded-full"
+                          animate={{ x: showHooksMode ? 12 : 0 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 30,
+                          }}
                         />
-                      ))}
+                      </div>
+                      <span
+                        className={
+                          showHooksMode
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        + Hooks
+                      </span>
+                    </button>
                   </div>
-                  {sortedStats.length > 3 && (
+
+                  {showHooksMode ? (
+                    <>
+                      <HookStatsSummary
+                        globalStats={{
+                          totalSwaps,
+                          hookedSwaps: sortedStats.reduce(
+                            (acc, stat) =>
+                              acc + parseInt(stat.hookedSwaps ?? "0"),
+                            0
+                          ),
+                          totalPools,
+                          hookedPools: sortedStats.reduce(
+                            (acc, stat) =>
+                              acc + parseInt(stat.hookedPools ?? "0"),
+                            0
+                          ),
+                        }}
+                      />
+                      <div className="space-y-3">
+                        {sortedStats
+                          .sort(
+                            (a, b) =>
+                              parseInt(b.hookedSwaps ?? "0") -
+                              parseInt(a.hookedSwaps ?? "0")
+                          )
+                          .slice(0, showAllNetworks ? undefined : 3)
+                          .map((stat) => (
+                            <AnimatedBar
+                              key={stat.id}
+                              label={
+                                NETWORK_NAMES[stat.id] || `Chain ${stat.id}`
+                              }
+                              value={parseInt(stat.numberOfSwaps)}
+                              maxValue={totalSwaps}
+                              pools={parseInt(stat.numberOfPools)}
+                              maxPools={totalPools}
+                              mode="hooks"
+                              hookedSwaps={parseInt(stat.hookedSwaps ?? "0")}
+                              hookedPools={parseInt(stat.hookedPools ?? "0")}
+                            />
+                          ))}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <StatsSummary
+                        globalStats={globalStats}
+                        networkStats={networkStats}
+                      />
+                      <div className="space-y-3">
+                        {sortedStats.map((stat) => (
+                          <AnimatedBar
+                            key={stat.id}
+                            label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
+                            value={parseInt(stat.numberOfSwaps)}
+                            maxValue={totalSwaps}
+                            pools={parseInt(stat.numberOfPools)}
+                            maxPools={totalPools}
+                            mode="overview"
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {showHooksMode && sortedStats.length > 3 && (
                     <button
                       onClick={() => setShowAllNetworks(!showAllNetworks)}
                       className="mt-6 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all duration-200 group"
