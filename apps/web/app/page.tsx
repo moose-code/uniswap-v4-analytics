@@ -9,6 +9,7 @@ import { TabsContainer } from "@/components/TabsContainer";
 import { ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PoolsSummary } from "../components/PoolsSummary";
+import { HooksSummary } from "@/components/HooksSummary";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -27,6 +28,7 @@ const NETWORK_NAMES: Record<string, string> = {
 const TABS = [
   { id: "overview", label: "Swaps" },
   { id: "pools", label: "Pools" },
+  { id: "hooks", label: "Hooks" },
 ];
 
 type GlobalStat = {
@@ -244,6 +246,17 @@ export default function Page() {
                     </span>
                   </div>
                   <PoolsSummary />
+                </motion.div>
+              )}
+              {activeTab === "hooks" && (
+                <motion.div
+                  key="hooks"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HooksSummary />
                 </motion.div>
               )}
             </AnimatePresence>
