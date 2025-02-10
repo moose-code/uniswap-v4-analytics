@@ -13,13 +13,20 @@ type HooksData = {
   HookStats: Hook[];
 };
 
+// Add type for the GraphQL response
+type StatsQueryResponse = {
+  HookStats: Hook[];
+  // Add other fields from STATS_QUERY if needed
+};
+
 export function useHooks() {
   const [hooks, setHooks] = useState<HooksData | null>(null);
 
   useEffect(() => {
     const fetchHooks = async () => {
       try {
-        const data = await graphqlClient.request(STATS_QUERY);
+        const data =
+          await graphqlClient.request<StatsQueryResponse>(STATS_QUERY);
         setHooks({ HookStats: data.HookStats });
       } catch (error) {
         console.error("Error fetching hooks:", error);
