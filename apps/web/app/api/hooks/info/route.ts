@@ -5,7 +5,13 @@ const base = new Airtable({
   apiKey:
     process.env.AIRTABLE_API_KEY ||
     (() => {
-      console.error("Available env vars:", Object.keys(process.env));
+      // Log all environment variable names (but not values for security)
+      console.error(
+        "Available env vars:",
+        Object.keys(process.env).sort().join(", ")
+      );
+      console.error("NODE_ENV:", process.env.NODE_ENV);
+      console.error("VERCEL_ENV:", process.env.VERCEL_ENV);
       throw new Error(
         `AIRTABLE_API_KEY is ${process.env.AIRTABLE_API_KEY ? "set but empty" : "not set"}`
       );
