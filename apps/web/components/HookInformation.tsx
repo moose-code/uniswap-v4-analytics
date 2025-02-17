@@ -47,7 +47,7 @@ export function HookInformation() {
   );
   const displayedEntries = showAllEntries
     ? filteredHooks
-    : filteredHooks.slice(0, 12);
+    : filteredHooks.slice(0, 9);
 
   return (
     <div className="w-full space-y-6">
@@ -56,7 +56,7 @@ export function HookInformation() {
         <span>Displaying hook information courtesy of @SilvioBusonero</span>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2 px-1">
+      <div className="flex flex-wrap justify-center gap-2 px-1 mb-2">
         {types.map((type) => (
           <button
             key={type}
@@ -141,7 +141,7 @@ export function HookInformation() {
         ))}
       </div>
 
-      {filteredHooks.length > 12 && (
+      {filteredHooks.length > 9 && (
         <button
           onClick={() => setShowAllEntries(!showAllEntries)}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all duration-200 group"
