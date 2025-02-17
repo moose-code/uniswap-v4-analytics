@@ -2,7 +2,14 @@ import Airtable from "airtable";
 import { getCachedHookInfo, setCachedHookInfo } from "@/lib/cache";
 
 const base = new Airtable({
-  apiKey: process.env.AIRTABLE_API_KEY,
+  apiKey:
+    process.env.AIRTABLE_API_KEY ||
+    (() => {
+      console.error("Available env vars:", Object.keys(process.env));
+      throw new Error(
+        `AIRTABLE_API_KEY is ${process.env.AIRTABLE_API_KEY ? "set but empty" : "not set"}`
+      );
+    })(),
 }).base("apppg8u4jvFsqU0vX");
 
 export async function GET() {
