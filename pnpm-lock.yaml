@@ -48,6 +48,9 @@ importers:
       '@workspace/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      airtable:
+        specifier: ^0.12.2
+        version: 0.12.2
       framer-motion:
         specifier: ^11.0.0
         version: 11.18.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
