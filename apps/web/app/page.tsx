@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PoolsSummary } from "../components/PoolsSummary";
 import { HooksSummary } from "@/components/HooksSummary";
+import { HookInformation } from "@/components/HookInformation";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -29,6 +30,7 @@ const TABS = [
   { id: "overview", label: "Swaps" },
   { id: "pools", label: "Pools" },
   { id: "hooks", label: "Hooks" },
+  { id: "hook-info", label: "Hook Information" },
 ];
 
 type GlobalStat = {
@@ -257,6 +259,17 @@ export default function Page() {
                   transition={{ duration: 0.2 }}
                 >
                   <HooksSummary />
+                </motion.div>
+              )}
+              {activeTab === "hook-info" && (
+                <motion.div
+                  key="hook-info"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <HookInformation />
                 </motion.div>
               )}
             </AnimatePresence>
