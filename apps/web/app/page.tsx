@@ -24,6 +24,7 @@ const NETWORK_NAMES: Record<string, string> = {
   "43114": "Avalanche",
   "57073": "Ink",
   "1868": "Soneium",
+  "130": "Unichain",
 };
 
 const TABS = [

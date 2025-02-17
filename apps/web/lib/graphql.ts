@@ -1,7 +1,7 @@
 import { GraphQLClient } from "graphql-request";
 
 export const graphqlClient = new GraphQLClient(
-  "https://indexer.dev.hyperindex.xyz/d1cbd01/v1/graphql"
+  "https://indexer.dev.hyperindex.xyz/afc0a63/v1/graphql"
 );
 
 export const STATS_QUERY = `
