@@ -111,7 +111,7 @@ export function HookInformation() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[400px]">
         <AnimatePresence mode="popLayout">
           {displayedEntries.map((entry) => (
             <motion.div
@@ -119,7 +119,11 @@ export function HookInformation() {
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
+              transition={{
+                duration: 0.3,
+                layout: { duration: 0.3 },
+              }}
               className="group flex flex-col p-4 rounded-lg border border-border/50 bg-secondary/5 hover:bg-secondary/10 transition-all duration-200 h-full"
             >
               <div className="flex justify-between items-start mb-3">
@@ -144,7 +148,7 @@ export function HookInformation() {
                 {entry.fields.Type.split(", ").map((type: string) => (
                   <span
                     key={type}
-                    className="px-2 py-0.5 bg-secondary/20 rounded-full text-xs font-medium"
+                    className="px-2 py-0.5 bg-secondary/10 rounded-full text-xs font-medium border border-border/20"
                   >
                     {type}
                   </span>
