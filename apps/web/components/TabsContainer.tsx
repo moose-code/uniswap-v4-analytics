@@ -63,17 +63,8 @@ export function TabsContainer({
         >
           {children}
         </motion.div>
-        <div className="absolute bottom-3 right-4 text-xs text-muted-foreground italic space-x-2">
-          <a
-            href="https://envio.dev/app/moose-code/uniswap-v4-indexer/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:underline"
-          >
-            View Data Source
-          </a>
-          <span>•</span>
-          <span>Last refreshed: {lastRefreshed}</span>
+        <div className="absolute bottom-3 right-4 text-xs text-muted-foreground italic">
+          Last refreshed: {lastRefreshed}
         </div>
       </div>
     </div>
