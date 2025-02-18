@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PoolsSummary } from "../components/PoolsSummary";
 import { HooksSummary } from "@/components/HooksSummary";
 import { HookInformation } from "@/components/HookInformation";
+import { LogoHeader } from "@/components/LogoHeader";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -90,9 +91,7 @@ export default function Page() {
     <div className="flex flex-col min-h-svh">
       <div className="flex items-center justify-center flex-1 p-4">
         <div className="w-full max-w-3xl">
-          <h1 className="text-xl md:text-2xl font-bold mb-8 text-center">
-            Uniswap v4 Leaderboard
-          </h1>
+          <LogoHeader />
           <TabsContainer
             tabs={TABS}
             activeTab={activeTab}
