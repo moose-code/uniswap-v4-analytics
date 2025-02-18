@@ -30,7 +30,7 @@ export function TabsContainer({
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-center">
         <div className="flex gap-8">
           {tabs.map((tab) => (
