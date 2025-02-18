@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export const LogoHeader = () => {
   return (
@@ -100,9 +101,17 @@ export const LogoHeader = () => {
               href="https://envio.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary/70 hover:text-primary transition-colors font-medium"
+              className="inline-flex items-center hover:opacity-80 transition-opacity"
             >
-              envio.dev
+              <Image
+                src="https://d30nibem0g3f7u.cloudfront.net/Envio-Logo.png"
+                alt="Envio"
+                width={96}
+                height={40}
+                className="h-3.5 w-auto object-contain"
+                quality={100}
+                priority
+              />
             </a>
           </motion.div>
         </div>
