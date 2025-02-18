@@ -37,15 +37,6 @@ export function HooksSummary() {
         <AlertCircle className="w-4 h-4" />
         <span>
           This page is under active development and will be improved shortly.{" "}
-          <a
-            href="https://univ4projects.notion.site/15f5a32af0b580249d0ee2e3f16f302f?v=4cbe60597dcb4f4cb52a40847b18b5d7"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:text-primary/80 transition-colors"
-          >
-            Visit this Notion page
-          </a>{" "}
-          for more information on hooks.
         </span>
       </div>
       <div className="rounded-lg border border-border/50 overflow-hidden">

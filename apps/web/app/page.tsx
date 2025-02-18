@@ -6,12 +6,13 @@ import { AnimatedBar } from "@/components/AnimatedBar";
 import { StatsSummary } from "@/components/StatsSummary";
 import { HookStatsSummary } from "@/components/HookStatsSummary";
 import { TabsContainer } from "@/components/TabsContainer";
-import { ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, AlertCircle, Github } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PoolsSummary } from "../components/PoolsSummary";
 import { HooksSummary } from "@/components/HooksSummary";
 import { HookInformation } from "@/components/HookInformation";
 import { LogoHeader } from "@/components/LogoHeader";
+import { ApisContent } from "@/components/ApisContent";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -33,6 +34,7 @@ const TABS = [
   { id: "pools", label: "Pools" },
   { id: "hooks", label: "Hooks" },
   { id: "hook-info", label: "Hook Information" },
+  { id: "apis", label: "APIs" },
 ];
 
 type GlobalStat = {
@@ -285,6 +287,24 @@ export default function Page() {
                   transition={{ duration: 0.2 }}
                 >
                   <HookInformation />
+                </motion.div>
+              )}
+              {activeTab === "apis" && (
+                <motion.div
+                  key="apis"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="mb-6 flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground bg-secondary/30 rounded-lg">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>
+                      This page is under active development and will be improved
+                      shortly
+                    </span>
+                  </div>
+                  <ApisContent />
                 </motion.div>
               )}
             </AnimatePresence>
