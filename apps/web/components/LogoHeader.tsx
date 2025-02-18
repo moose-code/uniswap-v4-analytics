@@ -11,9 +11,9 @@ export const LogoHeader = () => {
           className="absolute inset-[-2px] rounded-2xl blur-md"
           animate={{
             background: [
-              "linear-gradient(45deg, #22d3ee, #3b82f6, #22d3ee)",
-              "linear-gradient(45deg, #3b82f6, #22d3ee, #3b82f6)",
-              "linear-gradient(45deg, #22d3ee, #3b82f6, #22d3ee)",
+              "linear-gradient(45deg, #fc72ff, #ff99ff, #fc72ff)",
+              "linear-gradient(45deg, #ff99ff, #fc72ff, #ff99ff)",
+              "linear-gradient(45deg, #fc72ff, #ff99ff, #fc72ff)",
             ],
           }}
           transition={{
@@ -26,9 +26,9 @@ export const LogoHeader = () => {
           className="absolute inset-[-2px] rounded-2xl blur-md opacity-75"
           animate={{
             background: [
-              "linear-gradient(190deg, #22d3ee80, #3b82f680)",
-              "linear-gradient(190deg, #3b82f680, #22d3ee80)",
-              "linear-gradient(190deg, #22d3ee80, #3b82f680)",
+              "linear-gradient(190deg, #fc72ff80, #ff99ff80)",
+              "linear-gradient(190deg, #ff99ff80, #fc72ff80)",
+              "linear-gradient(190deg, #fc72ff80, #ff99ff80)",
             ],
           }}
           transition={{
@@ -42,9 +42,9 @@ export const LogoHeader = () => {
           className="absolute inset-[-2px] rounded-2xl blur-md opacity-50"
           animate={{
             background: [
-              "linear-gradient(320deg, #818cf880, #3b82f680)",
-              "linear-gradient(320deg, #3b82f680, #818cf880)",
-              "linear-gradient(320deg, #818cf880, #3b82f680)",
+              "linear-gradient(320deg, #ff99ff80, #fc72ff80)",
+              "linear-gradient(320deg, #fc72ff80, #ff99ff80)",
+              "linear-gradient(320deg, #ff99ff80, #fc72ff80)",
             ],
           }}
           transition={{
