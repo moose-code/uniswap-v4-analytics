@@ -40,14 +40,12 @@ export function ApisContent() {
       <div className="mt-8 space-y-4">
         <h3 className="text-lg font-medium">How to Access This Data?</h3>
         <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border/50">
-          <video
-            src="https://screen-studio-shareable-links.67aa83ffa7fb557cd114a7156fca4e73.r2.cloudflarestorage.com/RZ78qZ7x-video.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=363e5c20253db1195c87384f6dfb4c99%2F20250218%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250218T165348Z&X-Amz-Expires=7200&X-Amz-Signature=0f61dec7dfe7b33ecf0de59e881eff387c1e432fdcd27235f8b682ac05e8a291&X-Amz-SignedHeaders=host&x-id=GetObject"
-            className="absolute inset-0 h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            controls
+          <iframe
+            src="https://www.youtube.com/embed/NJv8IX_ebWE"
+            title="How to Access Data"
+            className="absolute inset-0 h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
           />
         </div>
       </div>
