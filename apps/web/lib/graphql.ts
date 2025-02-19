@@ -1,7 +1,11 @@
 import { GraphQLClient } from "graphql-request";
 
+if (!process.env.ENVIO_GRAPHQL_ENDPOINT) {
+  throw new Error("ENVIO_GRAPHQL_ENDPOINT is not defined");
+}
+
 export const graphqlClient = new GraphQLClient(
-  "https://indexer.dev.hyperindex.xyz/afc0a63/v1/graphql"
+  process.env.ENVIO_GRAPHQL_ENDPOINT
 );
 
 export const STATS_QUERY = `
