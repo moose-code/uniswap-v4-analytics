@@ -1,12 +1,7 @@
 import { GraphQLClient } from "graphql-request";
 
-if (!process.env.ENVIO_GRAPHQL_ENDPOINT) {
-  throw new Error("ENVIO_GRAPHQL_ENDPOINT is not defined");
-}
-
-export const graphqlClient = new GraphQLClient(
-  process.env.ENVIO_GRAPHQL_ENDPOINT
-);
+// Use the local API route instead of the direct GraphQL endpoint
+export const graphqlClient = new GraphQLClient("/api/graphql");
 
 export const STATS_QUERY = `
   query myQuery {
