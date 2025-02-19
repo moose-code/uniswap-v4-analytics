@@ -1,8 +1,7 @@
 import { GraphQLClient } from "graphql-request";
 
-export const graphqlClient = new GraphQLClient(
-  "https://indexer.dev.hyperindex.xyz/afc0a63/v1/graphql"
-);
+// Use the local API route instead of the direct GraphQL endpoint
+export const graphqlClient = new GraphQLClient("/api/graphql");
 
 export const STATS_QUERY = `
   query myQuery {
