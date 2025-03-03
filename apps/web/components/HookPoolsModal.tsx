@@ -174,6 +174,81 @@ export function HookPoolsModal({
 
           {!loading && !error && pools?.Pool && pools.Pool.length > 0 && (
             <div className="space-y-6">
+              {/* Hook Summary Statistics */}
+              <div className="bg-secondary/20 rounded-lg p-5 border border-border/50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Hook Performance Summary
+                  </h3>
+                  <div className="px-2.5 py-1 bg-secondary rounded-full text-xs font-medium">
+                    {pools.Pool.length}{" "}
+                    {pools.Pool.length === 1 ? "Pool" : "Pools"}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Total TVL */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Total TVL
+                    </div>
+                    <div className="text-2xl font-mono font-medium">
+                      {formatUSD(
+                        pools.Pool.reduce(
+                          (sum, pool) =>
+                            sum + parseFloat(pool.totalValueLockedUSD),
+                          0
+                        ).toString()
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total Volume */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Total Volume
+                    </div>
+                    <div className="text-2xl font-mono font-medium">
+                      {formatUSD(
+                        pools.Pool.reduce(
+                          (sum, pool) => sum + parseFloat(pool.volumeUSD),
+                          0
+                        ).toString()
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total Fees */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Total Fees
+                    </div>
+                    <div className="text-2xl font-mono font-medium">
+                      {formatUSD(
+                        pools.Pool.reduce(
+                          (sum, pool) => sum + parseFloat(pool.feesUSD),
+                          0
+                        ).toString()
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total Transactions */}
+                  <div className="space-y-1.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Total Swaps
+                    </div>
+                    <div className="text-2xl font-mono font-medium">
+                      {pools.Pool.reduce(
+                        (sum, pool) => sum + parseInt(pool.txCount),
+                        0
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <h3 className="text-sm font-medium px-1">Pool Details</h3>
+
               <div className="rounded-lg border border-border/50 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full table-fixed">
