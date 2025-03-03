@@ -28,9 +28,18 @@ export function useStats() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const currentDelay = useRef(INITIAL_RETRY_DELAY);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstLoadRef = useRef<boolean>(true);
+
+  // Function to clear any existing timeout
+  const clearCurrentTimeout = () => {
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+  };
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
     let mounted = true;
 
     const fetchData = async () => {
@@ -41,7 +50,9 @@ export function useStats() {
           setError(null);
           setRetryCount(0);
           currentDelay.current = INITIAL_RETRY_DELAY;
-          timeoutId = setTimeout(fetchData, 1000);
+          isFirstLoadRef.current = false;
+          clearCurrentTimeout();
+          timeoutIdRef.current = setTimeout(fetchData, 1000);
         }
       } catch (err) {
         const isRateLimit = err?.toString().includes("429");
@@ -55,18 +66,33 @@ export function useStats() {
             setError(
               `Rate limit reached. Retrying in ${currentDelay.current / 1000} seconds...`
             );
-            timeoutId = setTimeout(() => {
+            clearCurrentTimeout();
+            timeoutIdRef.current = setTimeout(() => {
               setRetryCount((prev) => prev + 1);
               fetchData();
             }, currentDelay.current);
           }
         } else {
           if (mounted) {
-            setError(
-              isRateLimit
-                ? "Rate limit exceeded. Please try again later."
-                : "Failed to fetch data. Please refresh the page."
-            );
+            // Only show error if we've already loaded data once or if we've exceeded max retries
+            if (!isFirstLoadRef.current || retryCount >= MAX_RETRIES) {
+              setError(
+                isRateLimit
+                  ? "Rate limit exceeded. Please try again later."
+                  : "Failed to fetch data. Please refresh the page."
+              );
+            }
+
+            // If this is the first load and not a rate limit error, try again
+            if (
+              isFirstLoadRef.current &&
+              !isRateLimit &&
+              retryCount < MAX_RETRIES
+            ) {
+              setRetryCount((prev) => prev + 1);
+              clearCurrentTimeout();
+              timeoutIdRef.current = setTimeout(fetchData, INITIAL_RETRY_DELAY);
+            }
           }
         }
       }
@@ -74,11 +100,27 @@ export function useStats() {
 
     fetchData();
 
+    // Set up visibility change listener to refetch when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Clear any existing error when the tab becomes visible again
+        if (error) {
+          setError(null);
+          setRetryCount(0);
+          currentDelay.current = INITIAL_RETRY_DELAY;
+          fetchData();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       mounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
+      clearCurrentTimeout();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [error, retryCount]);
 
   return { stats, error };
 }

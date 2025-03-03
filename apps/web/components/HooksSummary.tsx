@@ -53,7 +53,7 @@ const NETWORK_NAMES: Record<string, string> = {
 };
 
 export function HooksSummary() {
-  const hooks = useHooks();
+  const { hooks, loading, error } = useHooks();
   const [showAllHooks, setShowAllHooks] = useState(false);
   const previousSwapsRef = useRef<{ [key: string]: number }>({});
   const [selectedHook, setSelectedHook] = useState<{
@@ -74,7 +74,15 @@ export function HooksSummary() {
     }
   }, [hooks]);
 
-  if (!hooks) return <div>Loading...</div>;
+  if (loading && !hooks)
+    return (
+      <div className="py-10 text-center text-muted-foreground">
+        Loading hooks...
+      </div>
+    );
+  if (error)
+    return <div className="py-10 text-center text-red-500">{error}</div>;
+  if (!hooks) return null;
 
   const displayedHooks = showAllHooks
     ? hooks.HookStats.sort(
