@@ -49,8 +49,8 @@ export const POOLS_QUERY = `
 `;
 
 export const POOLS_BY_HOOK_QUERY = `
-  query poolsByHook($hookAddress: String!) {
-    Pool(where: {hooks: {_eq: $hookAddress}}, order_by: {totalValueLockedUSD: desc}) {
+  query poolsByHook($hookAddress: String!, $chainId: numeric!) {
+    Pool(where: {hooks: {_eq: $hookAddress}, chainId: {_eq: $chainId}}, order_by: {totalValueLockedUSD: desc}) {
       chainId
       hooks
       id

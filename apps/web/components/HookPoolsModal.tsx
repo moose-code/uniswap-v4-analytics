@@ -73,7 +73,8 @@ export function HookPoolsModal({
   hookChainId,
   onClose,
 }: HookPoolsModalProps) {
-  const { pools, loading, error } = usePoolsByHook(hookAddress);
+  const chainId = extractChainId(hookChainId);
+  const { pools, loading, error } = usePoolsByHook(hookAddress, chainId);
   const [showAllPools, setShowAllPools] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -102,7 +103,6 @@ export function HookPoolsModal({
     };
   }, []);
 
-  const chainId = extractChainId(hookChainId);
   const networkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
   const displayedPools = showAllPools
     ? pools?.Pool || []
@@ -120,7 +120,11 @@ export function HookPoolsModal({
       >
         <div className="flex items-center justify-between p-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">Pools using hook</h2>
+            <h2 className="text-lg font-medium">
+              {!loading && pools?.Pool
+                ? `Pools using hook (${pools.Pool.length})`
+                : "Pools using hook"}
+            </h2>
             <div className="flex items-center gap-2">
               <a
                 href={`https://scope.sh/${chainId}/address/${hookAddress}`}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { graphqlClient, POOLS_BY_HOOK_QUERY } from "@/lib/graphql";
+import { graphqlClient, POOLS_BY_HOOK_QUERY } from "../lib/graphql";
 
 interface Pool {
   chainId: string;
@@ -19,13 +19,16 @@ interface PoolsByHookResponse {
   Pool: Pool[];
 }
 
-export function usePoolsByHook(hookAddress: string | null) {
+export function usePoolsByHook(
+  hookAddress: string | null,
+  chainId: string | null
+) {
   const [pools, setPools] = useState<PoolsByHookResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hookAddress) {
+    if (!hookAddress || !chainId) {
       setPools(null);
       return;
     }
@@ -33,9 +36,14 @@ export function usePoolsByHook(hookAddress: string | null) {
     const fetchData = async () => {
       setLoading(true);
       try {
+        const numericChainId = parseInt(chainId);
+        if (isNaN(numericChainId)) {
+          throw new Error("Invalid chain ID");
+        }
+
         const data = await graphqlClient.request<PoolsByHookResponse>(
           POOLS_BY_HOOK_QUERY,
-          { hookAddress }
+          { hookAddress, chainId: numericChainId }
         );
         setPools(data);
         setError(null);
@@ -48,7 +56,7 @@ export function usePoolsByHook(hookAddress: string | null) {
     };
 
     fetchData();
-  }, [hookAddress]);
+  }, [hookAddress, chainId]);
 
   return { pools, loading, error };
 }
