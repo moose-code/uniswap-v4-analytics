@@ -7,6 +7,9 @@ type Hook = {
   numberOfPools: string;
   numberOfSwaps: string;
   firstPoolCreatedAt: string;
+  totalValueLockedUSD: string;
+  totalVolumeUSD: string;
+  totalFeesUSD: string;
 };
 
 type HooksData = {

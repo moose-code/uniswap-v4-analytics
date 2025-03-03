@@ -20,6 +20,9 @@ export const STATS_QUERY = `
       numberOfPools
       numberOfSwaps
       firstPoolCreatedAt
+      totalValueLockedUSD
+      totalVolumeUSD
+      totalFeesUSD
     }
     chain_metadata {
       chain_id
@@ -41,6 +44,24 @@ export const POOLS_QUERY = `
       volumeUSD
       feesUSD
       totalValueLockedUSD
+    }
+  }
+`;
+
+export const POOLS_BY_HOOK_QUERY = `
+  query poolsByHook($hookAddress: String!) {
+    Pool(where: {hooks: {_eq: $hookAddress}}, order_by: {totalValueLockedUSD: desc}) {
+      chainId
+      hooks
+      id
+      name
+      txCount
+      token0
+      token1
+      volumeUSD
+      feesUSD
+      totalValueLockedUSD
+      createdAtTimestamp
     }
   }
 `;
