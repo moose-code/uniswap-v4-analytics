@@ -200,16 +200,6 @@ export function PoolSwapsModal({
     ? swaps?.Swap || []
     : (swaps?.Swap || []).slice(0, 20);
 
-  // Calculate some summary statistics
-  const totalVolume =
-    swaps?.Swap.reduce((sum, swap) => sum + parseFloat(swap.amountUSD), 0) || 0;
-  const avgSwapSize = swaps?.Swap.length ? totalVolume / swaps.Swap.length : 0;
-  const largestSwap =
-    swaps?.Swap.reduce(
-      (max, swap) => Math.max(max, parseFloat(swap.amountUSD)),
-      0
-    ) || 0;
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
@@ -274,49 +264,6 @@ export function PoolSwapsModal({
 
           {!loading && !error && swaps?.Swap && swaps.Swap.length > 0 && (
             <div className="space-y-6">
-              {/* Swap Summary Statistics */}
-              <div className="bg-secondary/20 rounded-lg p-5 border border-border/50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Swap Activity Summary
-                  </h3>
-                  <div className="px-2.5 py-1 bg-secondary rounded-full text-xs font-medium">
-                    {swaps.Swap.length} Swaps
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  {/* Total Volume */}
-                  <div className="space-y-1.5">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      Total Volume
-                    </div>
-                    <div className="text-2xl font-mono font-medium">
-                      {formatUSD(totalVolume.toString())}
-                    </div>
-                  </div>
-
-                  {/* Average Swap Size */}
-                  <div className="space-y-1.5">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      Average Swap Size
-                    </div>
-                    <div className="text-2xl font-mono font-medium">
-                      {formatUSD(avgSwapSize.toString())}
-                    </div>
-                  </div>
-
-                  {/* Largest Swap */}
-                  <div className="space-y-1.5">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      Largest Swap
-                    </div>
-                    <div className="text-2xl font-mono font-medium">
-                      {formatUSD(largestSwap.toString())}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <h3 className="text-sm font-medium px-1">Swap Details</h3>
 
               <div className="rounded-lg border border-border/50 overflow-hidden">

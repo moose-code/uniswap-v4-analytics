@@ -210,7 +210,13 @@ export function HookPoolsModal({
                     <div className="text-2xl font-mono font-medium">
                       {formatUSD(
                         pools.Pool.reduce(
-                          (sum, pool) => sum + parseFloat(pool.volumeUSD),
+                          (sum, pool) =>
+                            sum +
+                            parseFloat(
+                              parseFloat(pool.volumeUSD) > 0
+                                ? pool.volumeUSD
+                                : pool.untrackedVolumeUSD
+                            ),
                           0
                         ).toString()
                       )}
@@ -225,7 +231,13 @@ export function HookPoolsModal({
                     <div className="text-2xl font-mono font-medium">
                       {formatUSD(
                         pools.Pool.reduce(
-                          (sum, pool) => sum + parseFloat(pool.feesUSD),
+                          (sum, pool) =>
+                            sum +
+                            parseFloat(
+                              parseFloat(pool.feesUSD) > 0
+                                ? pool.feesUSD
+                                : pool.feesUSDUntracked
+                            ),
                           0
                         ).toString()
                       )}
@@ -317,10 +329,18 @@ export function HookPoolsModal({
                               {formatUSD(pool.totalValueLockedUSD)}
                             </td>
                             <td className="px-4 py-4 font-mono text-sm">
-                              {formatUSD(pool.volumeUSD)}
+                              {formatUSD(
+                                parseFloat(pool.volumeUSD) > 0
+                                  ? pool.volumeUSD
+                                  : pool.untrackedVolumeUSD
+                              )}
                             </td>
                             <td className="px-4 py-4 font-mono text-sm">
-                              {formatUSD(pool.feesUSD)}
+                              {formatUSD(
+                                parseFloat(pool.feesUSD) > 0
+                                  ? pool.feesUSD
+                                  : pool.feesUSDUntracked
+                              )}
                             </td>
                             <td className="px-4 py-4 font-mono text-sm">
                               {parseInt(pool.txCount).toLocaleString()}

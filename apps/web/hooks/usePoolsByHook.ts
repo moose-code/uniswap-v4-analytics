@@ -10,7 +10,9 @@ interface Pool {
   token0: string;
   token1: string;
   volumeUSD: string;
+  untrackedVolumeUSD: string;
   feesUSD: string;
+  feesUSDUntracked: string;
   totalValueLockedUSD: string;
   createdAtTimestamp: string;
 }

@@ -232,10 +232,18 @@ export function PoolsSummary() {
                         {formatUSD(pool.totalValueLockedUSD)}
                       </td>
                       <td className="px-4 py-4 font-mono text-sm">
-                        {formatUSD(pool.volumeUSD)}
+                        {formatUSD(
+                          parseFloat(pool.volumeUSD) > 0
+                            ? pool.volumeUSD
+                            : pool.untrackedVolumeUSD
+                        )}
                       </td>
                       <td className="px-4 py-4 font-mono text-sm">
-                        {formatUSD(pool.feesUSD)}
+                        {formatUSD(
+                          parseFloat(pool.feesUSD) > 0
+                            ? pool.feesUSD
+                            : pool.feesUSDUntracked
+                        )}
                       </td>
                     </tr>
                   );

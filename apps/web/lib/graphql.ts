@@ -42,7 +42,9 @@ export const POOLS_QUERY = `
       token0
       token1
       volumeUSD
+      untrackedVolumeUSD
       feesUSD
+      feesUSDUntracked
       totalValueLockedUSD
     }
   }
@@ -59,7 +61,9 @@ export const POOLS_BY_HOOK_QUERY = `
       token0
       token1
       volumeUSD
+      untrackedVolumeUSD
       feesUSD
+      feesUSDUntracked
       totalValueLockedUSD
       createdAtTimestamp
     }
