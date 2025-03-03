@@ -20,7 +20,7 @@ export function ApisContent() {
         </div>
         <div className="flex items-center gap-4">
           <a
-            href="https://github.com/moose-code/uniswap-v4-indexer"
+            href="https://github.com/enviodev/uniswap-v4-indexer"
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -28,7 +28,7 @@ export function ApisContent() {
             <Github className="w-5 h-5" />
           </a>
           <a
-            href="https://envio.dev/app/moose-code/uniswap-v4-indexer"
+            href="https://envio.dev/app/enviodev/uniswap-v4-indexer"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary/70 hover:text-primary transition-colors text-sm font-medium"
@@ -72,7 +72,7 @@ export function ApisContent() {
           . This provides powerful querying capabilities through a GraphQL
           endpoint. The{" "}
           <a
-            href="https://github.com/moose-code/uniswap-v4-indexer"
+            href="https://github.com/enviodev/uniswap-v4-indexer"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary/70 hover:text-primary transition-colors"
