@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { usePools } from "../hooks/usePools";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PoolSwapsModal } from "./PoolSwapsModal";
 
@@ -34,6 +34,25 @@ const extractPoolAddress = (id: string): string => {
     return address || id;
   }
   return id;
+};
+
+// Helper function to shorten address for display
+const shortenAddress = (address: string): string => {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
+// Network slugs for explorer URLs
+const NETWORK_EXPLORER_URLS: Record<string, string> = {
+  "1": "https://etherscan.io",
+  "10": "https://optimistic.etherscan.io",
+  "137": "https://polygonscan.com",
+  "42161": "https://arbiscan.io",
+  "8453": "https://basescan.org",
+  "81457": "https://blastscan.io",
+  "7777777": "https://explorer.zora.energy",
+  "56": "https://bscscan.com",
+  "43114": "https://snowtrace.io",
 };
 
 // Network names mapping
@@ -72,6 +91,24 @@ export function PoolsSummary() {
     token0: string;
     token1: string;
   } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Reset copied state after 2 seconds
+  useEffect(() => {
+    if (copiedId) {
+      const timer = setTimeout(() => {
+        setCopiedId(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedId]);
+
+  // Function to copy text to clipboard
+  const copyToClipboard = (text: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening the modal
+    navigator.clipboard.writeText(text);
+    setCopiedId(text);
+  };
 
   if (loading && !pools)
     return (
@@ -115,6 +152,28 @@ export function PoolsSummary() {
                 {displayedPools.map((pool) => {
                   const chainId = extractChainId(pool.chainId);
                   const poolAddress = extractPoolAddress(pool.id);
+                  const explorerUrl =
+                    NETWORK_EXPLORER_URLS[chainId] || "https://etherscan.io";
+                  const networkSlug = NETWORK_SLUGS[chainId] || chainId;
+                  const uniswapPoolUrl = `https://app.uniswap.org/explore/pools/${networkSlug}/${poolAddress}`;
+
+                  // Extract token symbols or names from the pool name if available
+                  // Use type assertion to handle the TypeScript error
+                  const poolToken0 = (pool as any).token0 || "Unknown";
+                  const poolToken1 = (pool as any).token1 || "Unknown";
+                  let token0Display = poolToken0;
+                  let token1Display = poolToken1;
+
+                  // If pool name contains a slash, it might be in the format "TOKEN0/TOKEN1"
+                  if (pool.name && pool.name.includes("/")) {
+                    const parts = pool.name.split("/");
+                    if (parts && parts.length === 2) {
+                      const part0 = parts[0];
+                      const part1 = parts[1];
+                      if (part0) token0Display = part0.trim();
+                      if (part1) token1Display = part1.trim();
+                    }
+                  }
 
                   return (
                     <tr
@@ -124,8 +183,8 @@ export function PoolsSummary() {
                         setSelectedPool({
                           id: pool.id,
                           name: pool.name,
-                          token0: pool.token0,
-                          token1: pool.token1,
+                          token0: token0Display,
+                          token1: token1Display,
                         })
                       }
                     >
@@ -134,8 +193,31 @@ export function PoolsSummary() {
                           <span className="font-medium text-sm truncate">
                             {pool.name || "Unnamed Pool"}
                           </span>
-                          <div className="inline-flex items-center gap-1 text-xs text-muted-foreground font-mono truncate">
-                            <span>{poolAddress}</span>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                            <span className="font-mono truncate max-w-[180px]">
+                              {shortenAddress(poolAddress)}
+                            </span>
+                            <a
+                              href={uniswapPoolUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                              title="View on Uniswap"
+                            >
+                              <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
+                            </a>
+                            <button
+                              onClick={(e) => copyToClipboard(pool.id, e)}
+                              className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                              title="Copy pool ID"
+                            >
+                              {copiedId === pool.id ? (
+                                <Check className="w-3 h-3 text-green-500" />
+                              ) : (
+                                <Copy className="w-3 h-3 opacity-70 hover:opacity-100" />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </td>

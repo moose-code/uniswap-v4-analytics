@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { graphqlClient, RECENT_SWAPS_BY_POOL_QUERY } from "@/lib/graphql";
 
+interface Token {
+  id: string;
+  name: string;
+  symbol: string;
+  decimals: string;
+}
+
 interface Swap {
   id: string;
   amount0: string;
@@ -10,8 +17,8 @@ interface Swap {
   sender: string;
   timestamp: string;
   transaction: string;
-  token0: string;
-  token1: string;
+  token0: Token;
+  token1: Token;
   sqrtPriceX96: string;
   tick: string;
   chainId: string;
@@ -58,21 +65,10 @@ export function useRecentSwapsByPool(
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Extract chainId and poolAddress from the combined poolId
-        const chainId = extractChainId(poolId);
-        const poolAddress = extractPoolAddress(poolId);
-
-        // Convert chainId to number for the GraphQL query
-        const numericChainId = parseInt(chainId);
-        if (isNaN(numericChainId)) {
-          throw new Error("Invalid chain ID");
-        }
-
         const data = await graphqlClient.request<RecentSwapsResponse>(
           RECENT_SWAPS_BY_POOL_QUERY,
           {
-            poolAddress,
-            chainId: numericChainId,
+            poolId,
             limit,
           }
         );

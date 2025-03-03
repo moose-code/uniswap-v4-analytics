@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRecentSwapsByPool } from "../hooks/useRecentSwapsByPool";
-import { X, ExternalLink, ChevronDown, ArrowDownUp } from "lucide-react";
+import {
+  X,
+  ExternalLink,
+  ChevronDown,
+  ArrowDownUp,
+  Copy,
+  Check,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 // Helper function to format USD values
@@ -27,6 +34,16 @@ const extractChainId = (id: string): string => {
 
 // Helper function to extract pool address from the ID
 const extractPoolAddress = (id: string): string => {
+  // If the ID contains an underscore, extract the part after it
+  if (id.includes("_")) {
+    const address = id.split("_")[1];
+    return address || id;
+  }
+  return id;
+};
+
+// Helper function to extract token address from the ID (removing chain ID prefix)
+const extractTokenAddress = (id: string): string => {
   // If the ID contains an underscore, extract the part after it
   if (id.includes("_")) {
     const address = id.split("_")[1];
@@ -120,7 +137,25 @@ export function PoolSwapsModal({
 }: PoolSwapsModalProps) {
   const { swaps, loading, error } = useRecentSwapsByPool(poolId);
   const [showAll, setShowAll] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  // Reset copied state after 2 seconds
+  useEffect(() => {
+    if (copiedAddress) {
+      const timer = setTimeout(() => {
+        setCopiedAddress(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedAddress]);
+
+  // Function to copy text to clipboard
+  const copyToClipboard = (text: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening the modal
+    navigator.clipboard.writeText(text);
+    setCopiedAddress(text);
+  };
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -153,9 +188,13 @@ export function PoolSwapsModal({
   const networkSlug = NETWORK_SLUGS[chainId] || chainId;
   const uniswapPoolUrl = `https://app.uniswap.org/explore/pools/${networkSlug}/${poolAddress}`;
 
-  // Format token names to be shorter if needed
-  const shortToken0 = token0.length > 15 ? `${token0.slice(0, 13)}...` : token0;
-  const shortToken1 = token1.length > 15 ? `${token1.slice(0, 13)}...` : token1;
+  // Get token names/symbols from the first swap if available
+  const firstSwap = swaps?.Swap?.[0];
+  const token0Name =
+    firstSwap?.token0?.symbol || firstSwap?.token0?.name || token0;
+  const token1Name =
+    firstSwap?.token1?.symbol || firstSwap?.token1?.name || token1;
+  const displayPoolName = poolName || `${token0Name}/${token1Name}`;
 
   const displayedSwaps = showAll
     ? swaps?.Swap || []
@@ -195,7 +234,7 @@ export function PoolSwapsModal({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 font-medium text-sm text-primary hover:text-primary/80 transition-colors"
               >
-                <span>{poolName || `${shortToken0}/${shortToken1}`}</span>
+                <span>{displayPoolName}</span>
                 <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
               </a>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary/50">
@@ -311,6 +350,28 @@ export function PoolSwapsModal({
                         const isPositiveAmount0 = amount0Value > 0;
                         const isPositiveAmount1 = amount1Value > 0;
 
+                        // Get token names or symbols, with fallbacks
+                        const token0Name =
+                          swap.token0.name ||
+                          swap.token0.symbol ||
+                          shortenAddress(swap.token0.id);
+                        const token1Name =
+                          swap.token1.name ||
+                          swap.token1.symbol ||
+                          shortenAddress(swap.token1.id);
+
+                        // Extract token addresses without chain ID prefix
+                        const token0Address = extractTokenAddress(
+                          swap.token0.id
+                        );
+                        const token1Address = extractTokenAddress(
+                          swap.token1.id
+                        );
+
+                        // Token explorer URLs - using 'address' endpoint instead of 'token'
+                        const token0ExplorerUrl = `https://scope.sh/${swapChainId}/address/${token0Address}`;
+                        const token1ExplorerUrl = `https://scope.sh/${swapChainId}/address/${token1Address}`;
+
                         return (
                           <tr
                             key={swap.id}
@@ -345,7 +406,15 @@ export function PoolSwapsModal({
                                 <div
                                   className={`font-mono ${isPositiveAmount0 ? "text-green-500" : "text-red-500"}`}
                                 >
-                                  {`${amount0Value.toFixed(4)} ${shortToken0}`}
+                                  <a
+                                    href={token0ExplorerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 hover:underline"
+                                  >
+                                    {`${amount0Value.toFixed(4)} ${token0Name}`}
+                                    <ExternalLink className="w-2 h-2 opacity-70" />
+                                  </a>
                                 </div>
                                 <div className="flex items-center justify-center">
                                   <ArrowDownUp className="w-3 h-3 opacity-50" />
@@ -353,23 +422,85 @@ export function PoolSwapsModal({
                                 <div
                                   className={`font-mono ${isPositiveAmount1 ? "text-green-500" : "text-red-500"}`}
                                 >
-                                  {`${amount1Value.toFixed(4)} ${shortToken1}`}
+                                  <a
+                                    href={token1ExplorerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 hover:underline"
+                                  >
+                                    {`${amount1Value.toFixed(4)} ${token1Name}`}
+                                    <ExternalLink className="w-2 h-2 opacity-70" />
+                                  </a>
                                 </div>
                               </div>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex flex-col gap-1 text-xs font-mono">
-                                <div className="truncate">
-                                  <span className="text-muted-foreground mr-1">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground whitespace-nowrap">
                                     From:
                                   </span>
-                                  {shortenAddress(swap.origin)}
+                                  <div className="flex items-center gap-1 truncate">
+                                    <span className="truncate">
+                                      {shortenAddress(swap.origin)}
+                                    </span>
+                                    <a
+                                      href={`https://scope.sh/${swapChainId}/address/${swap.origin}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                                      title="View on explorer"
+                                    >
+                                      <ExternalLink className="w-2 h-2 opacity-70 hover:opacity-100" />
+                                    </a>
+                                    <button
+                                      onClick={(e) =>
+                                        copyToClipboard(swap.origin, e)
+                                      }
+                                      className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                                      title="Copy address"
+                                    >
+                                      {copiedAddress === swap.origin ? (
+                                        <Check className="w-2 h-2 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-2 h-2 opacity-70 hover:opacity-100" />
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="truncate">
-                                  <span className="text-muted-foreground mr-1">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-muted-foreground whitespace-nowrap">
                                     To:
                                   </span>
-                                  {shortenAddress(swap.sender)}
+                                  <div className="flex items-center gap-1 truncate">
+                                    <span className="truncate">
+                                      {shortenAddress(swap.sender)}
+                                    </span>
+                                    <a
+                                      href={`https://scope.sh/${swapChainId}/address/${swap.sender}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                                      title="View on explorer"
+                                    >
+                                      <ExternalLink className="w-2 h-2 opacity-70 hover:opacity-100" />
+                                    </a>
+                                    <button
+                                      onClick={(e) =>
+                                        copyToClipboard(swap.sender, e)
+                                      }
+                                      className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                                      title="Copy address"
+                                    >
+                                      {copiedAddress === swap.sender ? (
+                                        <Check className="w-2 h-2 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-2 h-2 opacity-70 hover:opacity-100" />
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </td>

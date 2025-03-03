@@ -67,9 +67,9 @@ export const POOLS_BY_HOOK_QUERY = `
 `;
 
 export const RECENT_SWAPS_BY_POOL_QUERY = `
-  query recentSwapsByPool($poolAddress: String!, $chainId: numeric!, $limit: Int!) {
+  query recentSwapsByPool($poolId: String!, $limit: Int!) {
     Swap(
-      where: {pool: {_eq: $poolAddress}, chainId: {_eq: $chainId}}, 
+      where: {pool: {_eq: $poolId}}, 
       order_by: {timestamp: desc}, 
       limit: $limit
     ) {
@@ -81,8 +81,18 @@ export const RECENT_SWAPS_BY_POOL_QUERY = `
       sender
       timestamp
       transaction
-      token0
-      token1
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
       sqrtPriceX96
       tick
       chainId

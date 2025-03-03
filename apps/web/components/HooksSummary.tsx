@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useHooks } from "../hooks/useHooks";
-import { ChevronDown, ExternalLink } from "lucide-react";
+import { ChevronDown, ExternalLink, Copy, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HookPoolsModal } from "./HookPoolsModal";
 
@@ -52,14 +52,51 @@ const NETWORK_NAMES: Record<string, string> = {
   "130": "Unichain",
 };
 
+// Network slugs for explorer URLs
+const NETWORK_EXPLORER_URLS: Record<string, string> = {
+  "1": "https://etherscan.io",
+  "10": "https://optimistic.etherscan.io",
+  "137": "https://polygonscan.com",
+  "42161": "https://arbiscan.io",
+  "8453": "https://basescan.org",
+  "81457": "https://blastscan.io",
+  "7777777": "https://explorer.zora.energy",
+  "56": "https://bscscan.com",
+  "43114": "https://snowtrace.io",
+};
+
+// Helper function to shorten address for display
+const shortenAddress = (address: string): string => {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
 export function HooksSummary() {
   const { hooks, loading, error } = useHooks();
   const [showAllHooks, setShowAllHooks] = useState(false);
-  const previousSwapsRef = useRef<{ [key: string]: number }>({});
   const [selectedHook, setSelectedHook] = useState<{
     address: string;
     chainId: string;
   } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const previousSwapsRef = useRef<Record<string, string>>({});
+
+  // Reset copied state after 2 seconds
+  useEffect(() => {
+    if (copiedId) {
+      const timer = setTimeout(() => {
+        setCopiedId(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedId]);
+
+  // Function to copy text to clipboard
+  const copyToClipboard = (text: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent opening the modal
+    navigator.clipboard.writeText(text);
+    setCopiedId(text);
+  };
 
   // Track previous values for animation
   useEffect(() => {
@@ -67,9 +104,9 @@ export function HooksSummary() {
       previousSwapsRef.current = hooks.HookStats.reduce(
         (acc, hook) => ({
           ...acc,
-          [hook.id]: parseInt(hook.numberOfSwaps),
+          [hook.id]: hook.numberOfSwaps,
         }),
-        {}
+        {} as Record<string, string>
       );
     }
   }, [hooks]);
@@ -128,11 +165,14 @@ export function HooksSummary() {
               <tbody className="divide-y divide-border/50">
                 {displayedHooks.map((hook) => {
                   const currentSwaps = parseInt(hook.numberOfSwaps);
-                  const previousSwaps =
-                    previousSwapsRef.current[hook.id] || currentSwaps;
+                  const previousSwaps = parseInt(
+                    previousSwapsRef.current[hook.id] || "0"
+                  );
                   const hasIncreased = currentSwaps > previousSwaps;
                   const chainId = extractChainId(hook.chainId);
                   const hookAddress = extractHookAddress(hook.id);
+                  const explorerUrl =
+                    NETWORK_EXPLORER_URLS[chainId] || "https://etherscan.io";
 
                   return (
                     <tr
@@ -146,11 +186,30 @@ export function HooksSummary() {
                       }
                     >
                       <td className="px-4 py-4">
-                        <div className="inline-flex items-center gap-1 font-mono text-sm text-primary hover:text-primary/80 transition-colors">
-                          <span className="truncate">
-                            {`${hookAddress.slice(0, 6)}...${hookAddress.slice(-4)}`}
+                        <div className="flex items-center gap-1 font-mono text-sm">
+                          <span className="truncate text-primary hover:text-primary/80 transition-colors">
+                            {shortenAddress(hookAddress)}
                           </span>
-                          <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
+                          <a
+                            href={`${explorerUrl}/address/${hookAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                          >
+                            <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
+                          </a>
+                          <button
+                            onClick={(e) => copyToClipboard(hookAddress, e)}
+                            className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                            title="Copy hook address"
+                          >
+                            {copiedId === hookAddress ? (
+                              <Check className="w-3 h-3 text-green-500" />
+                            ) : (
+                              <Copy className="w-3 h-3 opacity-70 hover:opacity-100" />
+                            )}
+                          </button>
                         </div>
                       </td>
                       <td className="px-4 py-4">
