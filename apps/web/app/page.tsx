@@ -29,6 +29,16 @@ const NETWORK_NAMES: Record<string, string> = {
   "130": "Unichain",
 };
 
+// Helper function to extract chain ID from the new format
+const extractChainId = (id: string): string => {
+  // If the ID contains an underscore, extract the part before it
+  if (id.includes("_")) {
+    const chainId = id.split("_")[0];
+    return chainId || id; // Fallback to original id if split fails
+  }
+  return id;
+};
+
 const TABS = [
   { id: "overview", label: "Swaps" },
   { id: "pools", label: "Pools" },
@@ -37,12 +47,14 @@ const TABS = [
   { id: "apis", label: "APIs" },
 ];
 
-type GlobalStat = {
+type PoolManagerStat = {
   id: string;
+  chainId: string;
+  poolCount: string;
+  txCount: string;
   numberOfSwaps: string;
-  numberOfPools: string;
-  hookedSwaps?: string;
-  hookedPools?: string;
+  hookedPools: string;
+  hookedSwaps: string;
 };
 
 export default function Page() {
@@ -74,16 +86,16 @@ export default function Page() {
     );
   }
 
-  const sortedStats = [...stats.GlobalStats].sort(
+  const sortedStats = [...stats.PoolManager].sort(
     (a, b) => parseInt(b.numberOfSwaps) - parseInt(a.numberOfSwaps)
-  ) as GlobalStat[];
+  ) as PoolManagerStat[];
 
   const totalSwaps = sortedStats.reduce(
     (acc, stat) => acc + parseInt(stat.numberOfSwaps),
     0
   );
   const totalPools = sortedStats.reduce(
-    (acc, stat) => acc + parseInt(stat.numberOfPools),
+    (acc, stat) => acc + parseInt(stat.poolCount),
     0
   );
 
@@ -93,16 +105,19 @@ export default function Page() {
     avgSwapsPerPool: totalPools > 0 ? totalSwaps / totalPools : 0,
   };
 
-  const networkStats = sortedStats.map((stat) => ({
-    id: stat.id,
-    name: NETWORK_NAMES[stat.id] || `Chain ${stat.id}`,
-    swaps: parseInt(stat.numberOfSwaps),
-    pools: parseInt(stat.numberOfPools),
-    avgSwapsPerPool:
-      parseInt(stat.numberOfPools) > 0
-        ? parseInt(stat.numberOfSwaps) / parseInt(stat.numberOfPools)
-        : 0,
-  }));
+  const networkStats = sortedStats.map((stat) => {
+    const chainId = extractChainId(stat.id);
+    return {
+      id: stat.id,
+      name: NETWORK_NAMES[chainId] || `Chain ${stat.id}`,
+      swaps: parseInt(stat.numberOfSwaps),
+      pools: parseInt(stat.poolCount),
+      avgSwapsPerPool:
+        parseInt(stat.poolCount) > 0
+          ? parseInt(stat.numberOfSwaps) / parseInt(stat.poolCount)
+          : 0,
+    };
+  });
 
   return (
     <div className="flex flex-col min-h-svh">
@@ -170,14 +185,12 @@ export default function Page() {
                         globalStats={{
                           totalSwaps,
                           hookedSwaps: sortedStats.reduce(
-                            (acc, stat) =>
-                              acc + parseInt(stat.hookedSwaps ?? "0"),
+                            (acc, stat) => acc + parseInt(stat.hookedSwaps),
                             0
                           ),
                           totalPools,
                           hookedPools: sortedStats.reduce(
-                            (acc, stat) =>
-                              acc + parseInt(stat.hookedPools ?? "0"),
+                            (acc, stat) => acc + parseInt(stat.hookedPools),
                             0
                           ),
                         }}
@@ -186,25 +199,27 @@ export default function Page() {
                         {sortedStats
                           .sort(
                             (a, b) =>
-                              parseInt(b.hookedSwaps ?? "0") -
-                              parseInt(a.hookedSwaps ?? "0")
+                              parseInt(b.hookedSwaps) - parseInt(a.hookedSwaps)
                           )
                           .slice(0, showAllNetworks ? undefined : 3)
-                          .map((stat) => (
-                            <AnimatedBar
-                              key={stat.id}
-                              label={
-                                NETWORK_NAMES[stat.id] || `Chain ${stat.id}`
-                              }
-                              value={parseInt(stat.numberOfSwaps)}
-                              maxValue={totalSwaps}
-                              pools={parseInt(stat.numberOfPools)}
-                              maxPools={totalPools}
-                              mode="hooks"
-                              hookedSwaps={parseInt(stat.hookedSwaps ?? "0")}
-                              hookedPools={parseInt(stat.hookedPools ?? "0")}
-                            />
-                          ))}
+                          .map((stat) => {
+                            const chainId = extractChainId(stat.id);
+                            return (
+                              <AnimatedBar
+                                key={stat.id}
+                                label={
+                                  NETWORK_NAMES[chainId] || `Chain ${stat.id}`
+                                }
+                                value={parseInt(stat.numberOfSwaps)}
+                                maxValue={totalSwaps}
+                                pools={parseInt(stat.poolCount)}
+                                maxPools={totalPools}
+                                mode="hooks"
+                                hookedSwaps={parseInt(stat.hookedSwaps)}
+                                hookedPools={parseInt(stat.hookedPools)}
+                              />
+                            );
+                          })}
                       </div>
                     </>
                   ) : (
@@ -214,17 +229,22 @@ export default function Page() {
                         networkStats={networkStats}
                       />
                       <div className="space-y-3">
-                        {sortedStats.map((stat) => (
-                          <AnimatedBar
-                            key={stat.id}
-                            label={NETWORK_NAMES[stat.id] || `Chain ${stat.id}`}
-                            value={parseInt(stat.numberOfSwaps)}
-                            maxValue={totalSwaps}
-                            pools={parseInt(stat.numberOfPools)}
-                            maxPools={totalPools}
-                            mode="overview"
-                          />
-                        ))}
+                        {sortedStats.map((stat) => {
+                          const chainId = extractChainId(stat.id);
+                          return (
+                            <AnimatedBar
+                              key={stat.id}
+                              label={
+                                NETWORK_NAMES[chainId] || `Chain ${stat.id}`
+                              }
+                              value={parseInt(stat.numberOfSwaps)}
+                              maxValue={totalSwaps}
+                              pools={parseInt(stat.poolCount)}
+                              maxPools={totalPools}
+                              mode="overview"
+                            />
+                          );
+                        })}
                       </div>
                     </>
                   )}

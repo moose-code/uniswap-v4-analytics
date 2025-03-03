@@ -1,7 +1,66 @@
 import { useState, useRef, useEffect } from "react";
 import { usePools } from "../hooks/usePools";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
+
+// Helper function to extract chain ID from the new format
+const extractChainId = (id: string): string => {
+  // If the ID contains an underscore, extract the part before it
+  if (id.includes("_")) {
+    const chainId = id.split("_")[0];
+    return chainId || id; // Fallback to original id if split fails
+  }
+  return id;
+};
+
+// Helper function to format USD values
+const formatUSD = (value: string): string => {
+  const num = parseFloat(value);
+  if (num >= 1_000_000) {
+    return `$${(num / 1_000_000).toFixed(2)}M`;
+  } else if (num >= 1_000) {
+    return `$${(num / 1_000).toFixed(2)}K`;
+  } else {
+    return `$${num.toFixed(2)}`;
+  }
+};
+
+// Helper function to extract pool address from the ID
+const extractPoolAddress = (id: string): string => {
+  // If the ID contains an underscore, extract the part after it
+  if (id.includes("_")) {
+    const address = id.split("_")[1];
+    return address || id;
+  }
+  return id;
+};
+
+// Network names mapping
+const NETWORK_NAMES: Record<string, string> = {
+  "1": "Ethereum",
+  "10": "Optimism",
+  "137": "Polygon",
+  "42161": "Arbitrum",
+  "8453": "Base",
+  "81457": "Blast",
+  "7777777": "Zora",
+  "56": "BSC",
+  "43114": "Avalanche",
+  "57073": "Ink",
+  "1868": "Soneium",
+  "130": "Unichain",
+};
+
+// Network slugs for Uniswap URLs
+const NETWORK_SLUGS: Record<string, string> = {
+  "1": "ethereum",
+  "10": "optimism",
+  "137": "polygon",
+  "42161": "arbitrum",
+  "8453": "base",
+  "81457": "blast",
+  "7777777": "zora",
+};
 
 export function PoolsSummary() {
   const pools = usePools();
@@ -14,7 +73,7 @@ export function PoolsSummary() {
       previousSwapsRef.current = pools.Pool.reduce(
         (acc, pool) => ({
           ...acc,
-          [pool.id]: parseInt(pool.numberOfSwaps),
+          [pool.id]: parseInt(pool.txCount),
         }),
         {}
       );
@@ -29,72 +88,78 @@ export function PoolsSummary() {
     <div className="w-full space-y-6">
       <div className="rounded-lg border border-border/50 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr className="border-b border-border/50 bg-secondary/30">
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
-                  Pool ID
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[25%]">
+                  Pool Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
-                  Chain ID
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  Network
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
-                  Fee
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  TVL
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
-                  Number of Swaps
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  Volume
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
-                  Tick Spacing
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  Fees
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground">
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                   Hooks
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {displayedPools.map((pool) => {
-                const currentSwaps = parseInt(pool.numberOfSwaps);
+                const currentSwaps = parseInt(pool.txCount);
                 const previousSwaps =
                   previousSwapsRef.current[pool.id] || currentSwaps;
                 const hasIncreased = currentSwaps > previousSwaps;
+                const chainId = extractChainId(pool.chainId);
+                const poolAddress = extractPoolAddress(pool.id);
+                const networkSlug = NETWORK_SLUGS[chainId] || chainId;
+                const uniswapUrl = `https://app.uniswap.org/explore/pools/${networkSlug}/${poolAddress}`;
 
                 return (
                   <tr
                     key={pool.id}
                     className="hover:bg-secondary/30 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="font-mono text-sm">
-                        {`${pool.id.slice(0, 6)}...${pool.id.slice(-4)}`}
-                      </span>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sm truncate">
+                          {pool.name || "Unnamed Pool"}
+                        </span>
+                        <a
+                          href={uniswapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          <span className="text-xs text-muted-foreground font-mono truncate group-hover:text-primary transition-colors">
+                            {`${poolAddress.slice(0, 6)}...${poolAddress.slice(-4)}`}
+                          </span>
+                          <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
+                        </a>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary">
-                        {pool.chainId}
+                        {NETWORK_NAMES[chainId] || `Chain ${chainId}`}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
-                      {pool.fee}
+                    <td className="px-4 py-4 font-mono text-sm">
+                      {formatUSD(pool.totalValueLockedUSD)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <motion.span
-                        className="font-mono text-sm tabular-nums"
-                        animate={{
-                          scale: hasIncreased ? [1, 1.06, 1] : 1,
-                          color: hasIncreased
-                            ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
-                            : "inherit",
-                        }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {currentSwaps.toLocaleString()}
-                      </motion.span>
+                    <td className="px-4 py-4 font-mono text-sm">
+                      {formatUSD(pool.volumeUSD)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
-                      {pool.tickSpacing}
+                    <td className="px-4 py-4 font-mono text-sm">
+                      {formatUSD(pool.feesUSD)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4">
                       {pool.hooks ===
                       "0x0000000000000000000000000000000000000000" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/50 text-muted-foreground">
@@ -102,12 +167,12 @@ export function PoolsSummary() {
                         </span>
                       ) : (
                         <a
-                          href={`https://scope.sh/${pool.chainId}/address/${pool.hooks}`}
+                          href={`https://scope.sh/${chainId}/address/${pool.hooks}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                         >
-                          <span className="font-mono">
+                          <span className="font-mono truncate">
                             {`${pool.hooks.slice(0, 6)}...${pool.hooks.slice(-4)}`}
                           </span>
                         </a>

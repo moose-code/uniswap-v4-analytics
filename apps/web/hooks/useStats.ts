@@ -1,16 +1,18 @@
 import { useEffect, useState, useRef } from "react";
 import { graphqlClient, STATS_QUERY } from "@/lib/graphql";
 
-type GlobalStat = {
+type PoolManagerStat = {
   id: string;
+  chainId: string;
+  poolCount: string;
+  txCount: string;
   numberOfSwaps: string;
-  numberOfPools: string;
-  hookedSwaps: string;
   hookedPools: string;
+  hookedSwaps: string;
 };
 
 interface Stats {
-  GlobalStats: GlobalStat[];
+  PoolManager: PoolManagerStat[];
   chain_metadata: {
     chain_id: number;
     latest_processed_block: number;

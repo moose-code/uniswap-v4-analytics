@@ -5,10 +5,12 @@ export const graphqlClient = new GraphQLClient("/api/graphql");
 
 export const STATS_QUERY = `
   query myQuery {
-    GlobalStats {
+    PoolManager {
       id
+      chainId
+      poolCount
+      txCount
       numberOfSwaps
-      numberOfPools
       hookedPools
       hookedSwaps
     }
@@ -28,15 +30,17 @@ export const STATS_QUERY = `
 
 export const POOLS_QUERY = `
   query myQuery {
-    Pool(order_by: {numberOfSwaps: desc}, limit: 100) {
+    Pool(order_by: {totalValueLockedUSD: desc}, limit: 100) {
       chainId
-      fee
       hooks
       id
-      numberOfSwaps
-      tickSpacing
-      currency1
-      currency0
+      name
+      txCount
+      token0
+      token1
+      volumeUSD
+      feesUSD
+      totalValueLockedUSD
     }
   }
 `;

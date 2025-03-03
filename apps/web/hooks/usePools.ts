@@ -3,13 +3,15 @@ import { graphqlClient, POOLS_QUERY } from "@/lib/graphql";
 
 interface Pool {
   chainId: string;
-  fee: string;
   hooks: string;
   id: string;
-  numberOfSwaps: string;
-  tickSpacing: string;
-  currency1: string;
-  currency0: string;
+  name: string;
+  txCount: string;
+  token0: string;
+  token1: string;
+  volumeUSD: string;
+  feesUSD: string;
+  totalValueLockedUSD: string;
 }
 
 interface PoolsResponse {
