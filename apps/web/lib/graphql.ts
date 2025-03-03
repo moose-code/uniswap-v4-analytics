@@ -65,3 +65,27 @@ export const POOLS_BY_HOOK_QUERY = `
     }
   }
 `;
+
+export const RECENT_SWAPS_BY_POOL_QUERY = `
+  query recentSwapsByPool($poolAddress: String!, $chainId: numeric!, $limit: Int!) {
+    Swap(
+      where: {pool: {_eq: $poolAddress}, chainId: {_eq: $chainId}}, 
+      order_by: {timestamp: desc}, 
+      limit: $limit
+    ) {
+      id
+      amount0
+      amount1
+      amountUSD
+      origin
+      sender
+      timestamp
+      transaction
+      token0
+      token1
+      sqrtPriceX96
+      tick
+      chainId
+    }
+  }
+`;

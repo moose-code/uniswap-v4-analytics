@@ -20,11 +20,22 @@ interface PoolsResponse {
 
 export function usePools() {
   const [pools, setPools] = useState<PoolsResponse | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const data = await graphqlClient.request<PoolsResponse>(POOLS_QUERY);
-      setPools(data);
+      try {
+        setLoading(true);
+        const data = await graphqlClient.request<PoolsResponse>(POOLS_QUERY);
+        setPools(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching pools:", err);
+        setError("Failed to fetch pools data");
+      } finally {
+        setLoading(false);
+      }
     };
 
     // Initial fetch
@@ -36,5 +47,5 @@ export function usePools() {
     return () => clearInterval(interval);
   }, []);
 
-  return pools;
+  return { pools, loading, error };
 }
