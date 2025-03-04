@@ -28,10 +28,52 @@ export async function GET() {
 
     // If no cache or cache is expired, fetch from Airtable
     const records = await base("hooks").select().all();
-    const data = records.map((record) => ({
-      id: record.id,
-      fields: record.fields,
-    }));
+
+    // Log a few records to debug
+    if (records.length > 0) {
+      console.log(
+        "Sample Airtable record fields:",
+        JSON.stringify(records[0].fields, null, 2)
+      );
+    }
+
+    const data = records.map((record) => {
+      if (!record) return { id: "", fields: {} };
+
+      // Get the fields or empty object if undefined
+      const fields = record.fields || {};
+
+      // Check for both "Address" and "address" fields
+      let addressField = fields.address || fields.Address || null;
+
+      // Log any address fields for debugging
+      if (addressField) {
+        console.log(
+          `Hook ${fields.Name || record.id}: Raw Address = ${addressField}`
+        );
+      }
+
+      return {
+        id: record.id,
+        fields: {
+          ...fields,
+          // Ensure required fields exist (even if empty) to prevent undefined errors
+          Type: fields.Type || "",
+          Name: fields.Name || "",
+          "Project Description": fields["Project Description"] || "",
+          "Stage ": fields["Stage "] || "",
+          // Normalize the address field (use either lowercase or uppercase version)
+          address: addressField,
+          website: fields.website || null,
+          X: fields.X || null,
+        },
+      };
+    });
+
+    // Log the first processed record for debugging
+    if (data.length > 0) {
+      console.log("First processed record:", JSON.stringify(data[0], null, 2));
+    }
 
     // Cache the new data
     await setCachedHookInfo(data);

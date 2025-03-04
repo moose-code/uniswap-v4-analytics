@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AlertCircle, ChevronDown, ExternalLink, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { HookPoolsModal } from "./HookPoolsModal";
 
 interface HookInfo {
   id: string;
@@ -14,6 +15,30 @@ export function HookInformation() {
   const [showAllEntries, setShowAllEntries] = useState(false);
   const [selectedType, setSelectedType] = useState<string>("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedHook, setSelectedHook] = useState<{
+    address: string;
+    chainId: string;
+  } | null>(null);
+
+  // Function to extract chain ID from the address format (chainId_address)
+  const extractChainId = (addressWithChain: string | undefined): string => {
+    if (!addressWithChain) return "1"; // Default to Ethereum if address is undefined
+    if (addressWithChain.includes("_")) {
+      const parts = addressWithChain.split("_");
+      return parts[0] || "1";
+    }
+    return "1"; // Default to Ethereum if no chain ID is specified
+  };
+
+  // Function to extract address from the format (chainId_address)
+  const extractAddress = (addressWithChain: string | undefined): string => {
+    if (!addressWithChain) return ""; // Return empty string if address is undefined
+    if (addressWithChain.includes("_")) {
+      const parts = addressWithChain.split("_");
+      return parts[1] || addressWithChain;
+    }
+    return addressWithChain;
+  };
 
   useEffect(() => {
     const fetchHookInfo = async () => {
@@ -41,24 +66,56 @@ export function HookInformation() {
 
   const types = [
     "All",
-    ...new Set(hookInfo.map((h) => h.fields.Type.split(", ")).flat()),
+    ...new Set(
+      hookInfo
+        .filter((h) => h.fields && h.fields.Type)
+        .map((h) => h.fields.Type.split(", "))
+        .flat()
+    ),
   ].sort();
 
   const filteredHooks = hookInfo.filter((h) => {
     const matchesType =
-      selectedType === "All" || h.fields.Type.includes(selectedType);
+      selectedType === "All" ||
+      (h.fields && h.fields.Type && h.fields.Type.includes(selectedType));
     const matchesSearch =
       searchTerm === "" ||
-      h.fields.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      h.fields["Project Description"]
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      (h.fields &&
+        h.fields.Name &&
+        h.fields.Name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (h.fields &&
+        h.fields["Project Description"] &&
+        h.fields["Project Description"]
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()));
     return matchesType && matchesSearch;
   });
 
+  // Sort hooks to prioritize those with addresses
+  const sortedHooks = [...filteredHooks].sort((a, b) => {
+    const aAddressStr = a.fields?.address || "";
+    const bAddressStr = b.fields?.address || "";
+
+    const aHasAddress =
+      typeof aAddressStr === "string" &&
+      aAddressStr.includes("_") &&
+      aAddressStr.includes("0x");
+    const bHasAddress =
+      typeof bAddressStr === "string" &&
+      bAddressStr.includes("_") &&
+      bAddressStr.includes("0x");
+
+    // Hooks with addresses come first
+    if (aHasAddress && !bHasAddress) return -1;
+    if (!aHasAddress && bHasAddress) return 1;
+
+    // If both have addresses or both don't have addresses, sort alphabetically by name
+    return (a.fields?.Name || "").localeCompare(b.fields?.Name || "");
+  });
+
   const displayedEntries = showAllEntries
-    ? filteredHooks
-    : filteredHooks.slice(0, 9);
+    ? sortedHooks
+    : sortedHooks.slice(0, 9);
 
   return (
     <div className="w-full space-y-6">
@@ -113,75 +170,160 @@ export function HookInformation() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[400px]">
         <AnimatePresence mode="popLayout">
-          {displayedEntries.map((entry) => (
-            <motion.div
-              key={entry.id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
-              transition={{
-                duration: 0.3,
-                layout: { duration: 0.3 },
-              }}
-              className="group flex flex-col p-4 rounded-lg border border-border/50 bg-secondary/5 hover:bg-secondary/10 transition-all duration-200 h-full"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="font-medium group-hover:text-primary transition-colors">
-                  {entry.fields.Name}
-                </h3>
-                <span
-                  className={`
-                    px-2 py-0.5 rounded-full text-xs font-medium
-                    ${getStageStyles(entry.fields["Stage "])}
-                  `}
-                >
-                  {entry.fields["Stage "]}
-                </span>
-              </div>
+          {displayedEntries.map((entry) => {
+            // Log the address to debug
+            console.log(
+              `Hook ${entry.fields?.Name}: Address = ${entry.fields?.address}`
+            );
 
-              <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                {entry.fields["Project Description"]}
-              </p>
+            // Check if address exists and has the correct format (chainId_0x...)
+            const addressStr = entry.fields?.address || "";
+            const hasAddress =
+              typeof addressStr === "string" &&
+              addressStr.includes("_") &&
+              addressStr.includes("0x");
 
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {entry.fields.Type.split(", ").map((type: string) => (
+            // Log whether this hook is considered clickable
+            if (entry.fields?.address) {
+              console.log(
+                `Hook ${entry.fields?.Name}: Clickable = ${hasAddress}, Address format = ${addressStr}`
+              );
+            }
+
+            return (
+              <motion.div
+                key={entry.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
+                transition={{
+                  duration: 0.3,
+                  layout: { duration: 0.3 },
+                }}
+                className={`
+                  group flex flex-col p-4 rounded-lg border border-border/50 
+                  bg-secondary/5 hover:bg-secondary/10 transition-all duration-200 h-full
+                  ${hasAddress ? "cursor-pointer hover:border-primary/50 hover:shadow-md" : ""}
+                `}
+                onClick={() => {
+                  console.log(
+                    `Hook clicked: ${entry.fields?.Name}, Has address: ${hasAddress}`
+                  );
+                  if (hasAddress) {
+                    const addressWithChain = entry.fields.address;
+                    const extractedAddress = extractAddress(addressWithChain);
+                    const extractedChainId = extractChainId(addressWithChain);
+
+                    console.log(
+                      `Opening modal with: Address = ${extractedAddress}, ChainId = ${extractedChainId}`
+                    );
+
+                    setSelectedHook({
+                      address: extractedAddress,
+                      chainId: extractedChainId,
+                    });
+                  }
+                }}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="font-medium group-hover:text-primary transition-colors">
+                    {entry.fields?.Name || "Unnamed Hook"}
+                  </h3>
                   <span
-                    key={type}
-                    className="px-2 py-0.5 bg-secondary/10 rounded-full text-xs font-medium border border-border/20"
+                    className={`
+                      px-2 py-0.5 rounded-full text-xs font-medium
+                      ${getStageStyles(entry.fields?.["Stage "] || "")}
+                    `}
                   >
-                    {type}
+                    {entry.fields?.["Stage "] || "Unknown"}
                   </span>
-                ))}
-              </div>
+                </div>
 
-              <div className="mt-auto pt-3 border-t border-border/30">
-                <div className="flex gap-3">
-                  {entry.fields.website && (
-                    <a
-                      href={entry.fields.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                  {entry.fields?.["Project Description"] ||
+                    "No description available"}
+                </p>
+
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {entry.fields?.Type &&
+                    entry.fields.Type.split(", ").map((type: string) => (
+                      <span
+                        key={type}
+                        className="px-2 py-0.5 bg-secondary/10 rounded-full text-xs font-medium border border-border/20"
+                      >
+                        {type}
+                      </span>
+                    ))}
+                </div>
+
+                <div className="mt-auto pt-3 border-t border-border/30">
+                  <div className="flex flex-wrap gap-3">
+                    {entry.fields?.website && (
+                      <a
+                        href={entry.fields.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()} // Prevent triggering the card click
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Website
+                      </a>
+                    )}
+                    {entry.fields?.X && (
+                      <a
+                        href={entry.fields.X}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()} // Prevent triggering the card click
+                      >
+                        <ExternalLink className="w-3 h-3" />X (Twitter)
+                      </a>
+                    )}
+                    {entry.fields?.address && (
+                      <a
+                        href={`https://scope.sh/1/address/${extractAddress(entry.fields.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()} // Prevent triggering the card click
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Contract
+                      </a>
+                    )}
+                  </div>
+
+                  {hasAddress && (
+                    <button
+                      className="w-full mt-3 py-1.5 px-3 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1.5"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent the card click event
+                        const addressWithChain = entry.fields.address;
+                        const extractedAddress =
+                          extractAddress(addressWithChain);
+                        const extractedChainId =
+                          extractChainId(addressWithChain);
+
+                        console.log(
+                          `Button clicked: Opening modal with: Address = ${extractedAddress}, ChainId = ${extractedChainId}`
+                        );
+
+                        setSelectedHook({
+                          address: extractedAddress,
+                          chainId: extractedChainId,
+                        });
+                      }}
                     >
-                      <ExternalLink className="w-3 h-3" />
-                      Website
-                    </a>
-                  )}
-                  {entry.fields.X && (
-                    <a
-                      href={entry.fields.X}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
-                    >
-                      <ExternalLink className="w-3 h-3" />X (Twitter)
-                    </a>
+                      View Pools Using This Hook
+                    </button>
                   )}
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
       </div>
 
@@ -205,11 +347,25 @@ export function HookInformation() {
           </motion.div>
         </motion.button>
       )}
+
+      <AnimatePresence>
+        {selectedHook && (
+          <HookPoolsModal
+            hookAddress={selectedHook.address}
+            hookChainId={selectedHook.chainId}
+            onClose={() => setSelectedHook(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function getStageStyles(stage: string): string {
+  if (!stage) {
+    return "bg-secondary/20 text-muted-foreground border-border/50";
+  }
+
   const baseStyles = "border transition-colors duration-200";
   if (stage.includes("Mainnet")) {
     return `${baseStyles} bg-green-500/10 text-green-500 border-green-500/20`;
