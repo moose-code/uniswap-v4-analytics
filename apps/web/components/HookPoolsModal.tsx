@@ -65,12 +65,14 @@ const NETWORK_SLUGS: Record<string, string> = {
 interface HookPoolsModalProps {
   hookAddress: string;
   hookChainId: string;
+  hookName?: string;
   onClose: () => void;
 }
 
 export function HookPoolsModal({
   hookAddress,
   hookChainId,
+  hookName,
   onClose,
 }: HookPoolsModalProps) {
   const chainId = extractChainId(hookChainId);

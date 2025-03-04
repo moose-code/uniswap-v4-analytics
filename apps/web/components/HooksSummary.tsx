@@ -77,9 +77,50 @@ export function HooksSummary() {
   const [selectedHook, setSelectedHook] = useState<{
     address: string;
     chainId: string;
+    name?: string;
   } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const previousSwapsRef = useRef<Record<string, string>>({});
+  const [hookInfo, setHookInfo] = useState<Record<string, any>[]>([]);
+  const [loadingHooks, setLoadingHooks] = useState(true);
+
+  // Fetch hook information from the API
+  useEffect(() => {
+    const fetchHookInfo = async () => {
+      try {
+        const response = await fetch("/api/hooks/info");
+        if (!response.ok) throw new Error("Failed to fetch hook information");
+        const data = await response.json();
+        setHookInfo(data);
+      } catch (err) {
+        console.error("Error fetching hook info:", err);
+      } finally {
+        setLoadingHooks(false);
+      }
+    };
+
+    fetchHookInfo();
+  }, []);
+
+  // Function to find hook name by address
+  const getHookNameByAddress = (
+    hookAddress: string,
+    chainId: string
+  ): string | null => {
+    if (!hookAddress || !chainId || loadingHooks || hookInfo.length === 0)
+      return null;
+
+    // Format the hook address with chain ID for lookup
+    const formattedHookAddress = `${chainId}_${hookAddress}`;
+
+    // Look for a hook with matching address
+    const hook = hookInfo.find((h) => {
+      const addressField = h.fields?.address || h.fields?.Address || "";
+      return addressField === formattedHookAddress;
+    });
+
+    return hook?.fields?.Name || null;
+  };
 
   // Reset copied state after 2 seconds
   useEffect(() => {
@@ -139,25 +180,25 @@ export function HooksSummary() {
             <table className="w-full table-fixed">
               <thead>
                 <tr className="border-b border-border/50 bg-secondary/30">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[20%]">
-                    Hook Address
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[25%]">
+                    Hook
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[14%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[12%]">
                     Network
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[13%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[12%]">
                     TVL
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[13%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[12%]">
                     Volume
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[13%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[12%]">
                     Fees
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[13%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[12%]">
                     Pools
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[14%]">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                     Swaps
                   </th>
                 </tr>
@@ -171,6 +212,7 @@ export function HooksSummary() {
                   const hasIncreased = currentSwaps > previousSwaps;
                   const chainId = extractChainId(hook.chainId);
                   const hookAddress = extractHookAddress(hook.id);
+                  const hookName = getHookNameByAddress(hookAddress, chainId);
                   const explorerUrl =
                     NETWORK_EXPLORER_URLS[chainId] || "https://etherscan.io";
 
@@ -182,34 +224,42 @@ export function HooksSummary() {
                         setSelectedHook({
                           address: hookAddress,
                           chainId: hook.chainId,
+                          name: hookName || undefined,
                         })
                       }
                     >
                       <td className="px-4 py-4">
-                        <div className="flex items-center gap-1 font-mono text-sm">
-                          <span className="truncate text-primary hover:text-primary/80 transition-colors">
-                            {shortenAddress(hookAddress)}
-                          </span>
-                          <a
-                            href={`${explorerUrl}/address/${hookAddress}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
-                          >
-                            <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
-                          </a>
-                          <button
-                            onClick={(e) => copyToClipboard(hookAddress, e)}
-                            className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
-                            title="Copy hook address"
-                          >
-                            {copiedId === hookAddress ? (
-                              <Check className="w-3 h-3 text-green-500" />
-                            ) : (
-                              <Copy className="w-3 h-3 opacity-70 hover:opacity-100" />
-                            )}
-                          </button>
+                        <div className="flex flex-col">
+                          {hookName && (
+                            <span className="font-medium text-sm text-primary mb-1 truncate">
+                              {hookName}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                            <span className="truncate">
+                              {shortenAddress(hookAddress)}
+                            </span>
+                            <a
+                              href={`${explorerUrl}/address/${hookAddress}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                            >
+                              <ExternalLink className="w-3 h-3 opacity-70 hover:opacity-100" />
+                            </a>
+                            <button
+                              onClick={(e) => copyToClipboard(hookAddress, e)}
+                              className="p-0.5 rounded hover:bg-secondary/50 transition-colors flex-shrink-0"
+                              title="Copy hook address"
+                            >
+                              {copiedId === hookAddress ? (
+                                <Check className="w-3 h-3 text-green-500" />
+                              ) : (
+                                <Copy className="w-3 h-3 opacity-70 hover:opacity-100" />
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
