@@ -128,22 +128,22 @@ export function PoolsSummary() {
       <div className="w-full space-y-6">
         <div className="rounded-lg border border-border/50 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed">
+            <table className="w-full table-auto md:table-fixed">
               <thead>
                 <tr className="border-b border-border/50 bg-secondary/30">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[35%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[35%]">
                     Pool Name
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  <th className="px-3 md:px-4 py-3 text-center text-xs font-medium text-muted-foreground md:w-[15%]">
                     Network
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[15%]">
                     TVL
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[15%]">
                     Volume
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[20%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[20%]">
                     Fees
                   </th>
                 </tr>
@@ -188,7 +188,7 @@ export function PoolsSummary() {
                         })
                       }
                     >
-                      <td className="px-4 py-4">
+                      <td className="px-3 md:px-4 py-4">
                         <div className="flex flex-col">
                           <span className="font-medium text-sm truncate">
                             {pool.name || "Unnamed Pool"}
@@ -221,24 +221,24 @@ export function PoolsSummary() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="w-full overflow-hidden">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary truncate">
+                      <td className="px-3 md:px-4 py-4">
+                        <div className="w-full flex justify-center">
+                          <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-secondary min-w-[90px] text-center">
                             {NETWORK_NAMES[chainId] || `Chain ${chainId}`}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-4 font-mono text-sm">
+                      <td className="px-3 md:px-4 py-4 font-mono text-sm">
                         {formatUSD(pool.totalValueLockedUSD)}
                       </td>
-                      <td className="px-4 py-4 font-mono text-sm">
+                      <td className="px-3 md:px-4 py-4 font-mono text-sm">
                         {formatUSD(
                           parseFloat(pool.volumeUSD) > 0
                             ? pool.volumeUSD
                             : pool.untrackedVolumeUSD
                         )}
                       </td>
-                      <td className="px-4 py-4 font-mono text-sm">
+                      <td className="px-3 md:px-4 py-4 font-mono text-sm">
                         {formatUSD(
                           parseFloat(pool.feesUSD) > 0
                             ? pool.feesUSD

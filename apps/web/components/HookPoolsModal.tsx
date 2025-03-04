@@ -111,7 +111,7 @@ export function HookPoolsModal({
     : (pools?.Pool || []).slice(0, 10);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
       <motion.div
         ref={modalRef}
         className="bg-background rounded-lg shadow-lg w-full max-w-5xl max-h-[90vh] flex flex-col"
@@ -120,14 +120,14 @@ export function HookPoolsModal({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="flex items-center justify-between p-4 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <h2 className="text-base sm:text-lg font-medium">
               {!loading && pools?.Pool
                 ? `Pools using hook (${pools.Pool.length})`
                 : "Pools using hook"}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <a
                 href={`https://scope.sh/${chainId}/address/${hookAddress}`}
                 target="_blank"
@@ -139,7 +139,7 @@ export function HookPoolsModal({
                 </span>
                 <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
               </a>
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-secondary/50">
+              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/50 min-w-[90px] text-center inline-block">
                 {networkName}
               </span>
             </div>
@@ -151,7 +151,7 @@ export function HookPoolsModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-2 sm:p-4">
           {loading && (
             <div className="flex items-center justify-center h-40">
               <div className="animate-pulse text-muted-foreground">
@@ -175,25 +175,25 @@ export function HookPoolsModal({
           )}
 
           {!loading && !error && pools?.Pool && pools.Pool.length > 0 && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Hook Summary Statistics */}
-              <div className="bg-secondary/20 rounded-lg p-5 border border-border/50">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-foreground">
+              <div className="bg-secondary/20 rounded-lg p-3 sm:p-5 border border-border/50">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-xs sm:text-sm font-semibold text-foreground">
                     Hook Performance Summary
                   </h3>
-                  <div className="px-2.5 py-1 bg-secondary rounded-full text-xs font-medium">
+                  <div className="px-2 sm:px-2.5 py-0.5 sm:py-1 bg-secondary rounded-full text-xs font-medium">
                     {pools.Pool.length}{" "}
                     {pools.Pool.length === 1 ? "Pool" : "Pools"}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                   {/* Total TVL */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     <div className="text-xs font-medium text-muted-foreground">
                       Total TVL
                     </div>
-                    <div className="text-2xl font-mono font-medium">
+                    <div className="text-lg sm:text-2xl font-mono font-medium">
                       {formatUSD(
                         pools.Pool.reduce(
                           (sum, pool) =>
@@ -205,11 +205,11 @@ export function HookPoolsModal({
                   </div>
 
                   {/* Total Volume */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     <div className="text-xs font-medium text-muted-foreground">
                       Total Volume
                     </div>
-                    <div className="text-2xl font-mono font-medium">
+                    <div className="text-lg sm:text-2xl font-mono font-medium">
                       {formatUSD(
                         pools.Pool.reduce(
                           (sum, pool) =>
@@ -226,11 +226,11 @@ export function HookPoolsModal({
                   </div>
 
                   {/* Total Fees */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     <div className="text-xs font-medium text-muted-foreground">
                       Total Fees
                     </div>
-                    <div className="text-2xl font-mono font-medium">
+                    <div className="text-lg sm:text-2xl font-mono font-medium">
                       {formatUSD(
                         pools.Pool.reduce(
                           (sum, pool) =>
@@ -247,11 +247,11 @@ export function HookPoolsModal({
                   </div>
 
                   {/* Total Transactions */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     <div className="text-xs font-medium text-muted-foreground">
                       Total Swaps
                     </div>
-                    <div className="text-2xl font-mono font-medium">
+                    <div className="text-lg sm:text-2xl font-mono font-medium">
                       {pools.Pool.reduce(
                         (sum, pool) => sum + parseInt(pool.txCount),
                         0
@@ -261,29 +261,32 @@ export function HookPoolsModal({
                 </div>
               </div>
 
-              <h3 className="text-sm font-medium px-1">Pool Details</h3>
+              <h3 className="text-xs sm:text-sm font-medium px-1">
+                Pool Details
+              </h3>
 
               <div className="rounded-lg border border-border/50 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full table-fixed">
+                {/* Table view (hidden on small screens) */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full min-w-[640px]">
                     <thead>
                       <tr className="border-b border-border/50 bg-secondary/30">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[25%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-muted-foreground w-[25%]">
                           Pool Name
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-center text-xs font-medium text-muted-foreground w-[15%]">
                           Network
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                           TVL
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                           Volume
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                           Fees
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-muted-foreground w-[15%]">
                           Swaps
                         </th>
                       </tr>
@@ -301,9 +304,9 @@ export function HookPoolsModal({
                             key={pool.id}
                             className="hover:bg-secondary/30 transition-colors"
                           >
-                            <td className="px-4 py-4">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4">
                               <div className="flex flex-col">
-                                <span className="font-medium text-sm truncate">
+                                <span className="font-medium text-xs sm:text-sm truncate">
                                   {pool.name || "Unnamed Pool"}
                                 </span>
                                 <a
@@ -319,32 +322,32 @@ export function HookPoolsModal({
                                 </a>
                               </div>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="w-full overflow-hidden">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4">
+                              <div className="w-full flex justify-center">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary truncate">
                                   {NETWORK_NAMES[poolChainId] ||
                                     `Chain ${poolChainId}`}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-4 font-mono text-sm">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4 font-mono text-xs sm:text-sm">
                               {formatUSD(pool.totalValueLockedUSD)}
                             </td>
-                            <td className="px-4 py-4 font-mono text-sm">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4 font-mono text-xs sm:text-sm">
                               {formatUSD(
                                 parseFloat(pool.volumeUSD) > 0
                                   ? pool.volumeUSD
                                   : pool.untrackedVolumeUSD
                               )}
                             </td>
-                            <td className="px-4 py-4 font-mono text-sm">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4 font-mono text-xs sm:text-sm">
                               {formatUSD(
                                 parseFloat(pool.feesUSD) > 0
                                   ? pool.feesUSD
                                   : pool.feesUSDUntracked
                               )}
                             </td>
-                            <td className="px-4 py-4 font-mono text-sm">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4 font-mono text-xs sm:text-sm">
                               {parseInt(pool.txCount).toLocaleString()}
                             </td>
                           </tr>
@@ -352,6 +355,92 @@ export function HookPoolsModal({
                       })}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile-friendly cards view (hidden on larger screens) */}
+                <div className="sm:hidden space-y-4 p-3">
+                  {displayedPools.map((pool) => {
+                    const poolChainId = extractChainId(pool.chainId);
+                    const poolAddress = extractPoolAddress(pool.id);
+                    const networkSlug =
+                      NETWORK_SLUGS[poolChainId] || poolChainId;
+                    const uniswapUrl = `https://app.uniswap.org/explore/pools/${networkSlug}/${poolAddress}`;
+
+                    return (
+                      <div
+                        key={pool.id}
+                        className="border border-border/50 rounded-lg p-3 bg-secondary/5 hover:bg-secondary/10 transition-colors"
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm truncate">
+                                {pool.name || "Unnamed Pool"}
+                              </span>
+                              <a
+                                href={uniswapUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="group flex items-center gap-1 hover:text-primary transition-colors"
+                              >
+                                <span className="text-xs text-muted-foreground font-mono truncate group-hover:text-primary transition-colors">
+                                  {`${poolAddress.slice(0, 6)}...${poolAddress.slice(-4)}`}
+                                </span>
+                                <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
+                              </a>
+                            </div>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary truncate">
+                              {NETWORK_NAMES[poolChainId] ||
+                                `Chain ${poolChainId}`}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                TVL
+                              </div>
+                              <div className="font-mono text-sm">
+                                {formatUSD(pool.totalValueLockedUSD)}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                Volume
+                              </div>
+                              <div className="font-mono text-sm">
+                                {formatUSD(
+                                  parseFloat(pool.volumeUSD) > 0
+                                    ? pool.volumeUSD
+                                    : pool.untrackedVolumeUSD
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                Fees
+                              </div>
+                              <div className="font-mono text-sm">
+                                {formatUSD(
+                                  parseFloat(pool.feesUSD) > 0
+                                    ? pool.feesUSD
+                                    : pool.feesUSDUntracked
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                Swaps
+                              </div>
+                              <div className="font-mono text-sm">
+                                {parseInt(pool.txCount).toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

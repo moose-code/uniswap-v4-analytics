@@ -201,7 +201,7 @@ export function PoolSwapsModal({
     : (swaps?.Swap || []).slice(0, 20);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
       <motion.div
         ref={modalRef}
         className="bg-background rounded-lg shadow-lg w-full max-w-5xl max-h-[90vh] flex flex-col"
@@ -210,24 +210,24 @@ export function PoolSwapsModal({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
       >
-        <div className="flex items-center justify-between p-4 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border/50">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h2 className="text-base sm:text-lg font-medium">
               {!loading && swaps?.Swap
                 ? `Recent Swaps (${swaps.Swap.length})`
                 : "Recent Swaps"}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <a
                 href={uniswapPoolUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium text-sm text-primary hover:text-primary/80 transition-colors"
+                className="inline-flex items-center gap-1 font-medium text-xs sm:text-sm text-primary hover:text-primary/80 transition-colors"
               >
                 <span>{displayPoolName}</span>
                 <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
               </a>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-secondary/50">
+              <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-secondary/50 min-w-[90px] text-center">
                 {networkName}
               </span>
             </div>
@@ -239,7 +239,7 @@ export function PoolSwapsModal({
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 overflow-auto p-3 sm:p-4">
           {loading && (
             <div className="flex items-center justify-center h-40">
               <div className="animate-pulse text-muted-foreground">
@@ -268,22 +268,22 @@ export function PoolSwapsModal({
 
               <div className="rounded-lg border border-border/50 overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full table-auto">
                     <thead>
                       <tr className="border-b border-border/50 bg-secondary/30">
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           Time
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           Transaction
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           Amount USD
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           Token Amounts
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           Accounts
                         </th>
                       </tr>
@@ -324,7 +324,7 @@ export function PoolSwapsModal({
                             key={swap.id}
                             className="hover:bg-secondary/30 transition-colors"
                           >
-                            <td className="px-4 py-3 text-sm whitespace-nowrap">
+                            <td className="px-3 sm:px-4 py-3 text-sm whitespace-nowrap">
                               <div className="flex flex-col">
                                 <span className="text-xs font-medium">
                                   {formatRelativeTime(swap.timestamp)}
@@ -334,7 +334,7 @@ export function PoolSwapsModal({
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 sm:px-4 py-3">
                               <a
                                 href={blockExplorerUrl}
                                 target="_blank"
@@ -345,10 +345,10 @@ export function PoolSwapsModal({
                                 <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
                               </a>
                             </td>
-                            <td className="px-4 py-3 font-mono text-sm">
+                            <td className="px-3 sm:px-4 py-3 font-mono text-sm">
                               {formatUSD(swap.amountUSD)}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 sm:px-4 py-3">
                               <div className="flex flex-col gap-1 text-xs">
                                 <div
                                   className={`font-mono ${isPositiveAmount0 ? "text-green-500" : "text-red-500"}`}
@@ -381,7 +381,7 @@ export function PoolSwapsModal({
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-3 sm:px-4 py-3">
                               <div className="flex flex-col gap-1 text-xs font-mono">
                                 <div className="flex items-center gap-1">
                                   <span className="text-muted-foreground whitespace-nowrap">

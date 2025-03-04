@@ -130,8 +130,8 @@ export default function Page() {
 
   return (
     <div className="flex flex-col min-h-svh">
-      <div className="flex items-center justify-center flex-1 p-4">
-        <div className="w-full max-w-3xl">
+      <div className="flex items-center justify-center flex-1 px-2 sm:px-4">
+        <div className="w-full max-w-full sm:max-w-3xl">
           <LogoHeader />
           <TabsContainer
             tabs={TABS}

@@ -31,13 +31,13 @@ export function TabsContainer({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center">
-        <div className="flex gap-8">
+      <div className="flex justify-center overflow-x-auto pb-2 px-2 -mx-2">
+        <div className="flex gap-4 md:gap-8 flex-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`pb-2 text-sm font-medium relative ${
+              className={`pb-2 text-xs md:text-sm font-medium relative whitespace-nowrap ${
                 activeTab === tab.id
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -54,12 +54,13 @@ export function TabsContainer({
           ))}
         </div>
       </div>
-      <div className="relative rounded-xl border border-border/50 p-6 pb-12">
+      <div className="relative rounded-xl border border-border/50 p-4 md:p-6 pb-12">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
+          className="overflow-x-auto"
         >
           {children}
         </motion.div>

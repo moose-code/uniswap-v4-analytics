@@ -5,8 +5,8 @@ import Image from "next/image";
 
 export const LogoHeader = () => {
   return (
-    <div className="flex flex-col items-center mb-6">
-      <div className="flex items-center gap-6">
+    <div className="flex flex-col items-center mb-4 sm:mb-6">
+      <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
         {/* Logo with glow */}
         <div className="relative">
           {/* Multiple glow layers */}
@@ -60,21 +60,21 @@ export const LogoHeader = () => {
 
           {/* Main content box */}
           <motion.div
-            className="relative px-6 py-2 rounded-2xl bg-white dark:bg-white/95 shadow-lg"
+            className="relative px-5 sm:px-6 py-1.5 sm:py-2 rounded-2xl bg-white dark:bg-white/95 shadow-lg"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 relative z-10">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 relative z-10">
               v4
             </h1>
           </motion.div>
         </div>
 
         {/* Text content */}
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-center sm:items-start mt-2 sm:mt-0">
           <motion.div
-            className="text-gray-600 text-sm md:text-base font-medium"
+            className="text-gray-600 text-sm md:text-base font-medium text-center sm:text-left"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -82,7 +82,7 @@ export const LogoHeader = () => {
             The hub for Uniswap data and hooks
           </motion.div>
           <motion.div
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/80"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/80 flex-wrap justify-center sm:justify-start"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.5 }}

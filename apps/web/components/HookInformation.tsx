@@ -27,6 +27,7 @@ export function HookInformation({
     name: string;
   } | null>(null);
   const highlightedCardRef = useRef<HTMLDivElement>(null);
+  const [isHighlightActive, setIsHighlightActive] = useState(false);
 
   // Function to extract chain ID from the address format (chainId_address)
   const extractChainId = (addressWithChain: string | undefined): string => {
@@ -88,6 +89,9 @@ export function HookInformation({
           setSelectedType("All");
         }
 
+        // Activate highlight
+        setIsHighlightActive(true);
+
         // Set a timeout to allow the UI to update before scrolling
         setTimeout(() => {
           if (highlightedCardRef.current) {
@@ -97,6 +101,13 @@ export function HookInformation({
             });
           }
         }, 100);
+
+        // Set a timeout to fade out the highlight after 3 seconds
+        const timer = setTimeout(() => {
+          setIsHighlightActive(false);
+        }, 3000);
+
+        return () => clearTimeout(timer);
       }
     }
   }, [highlightedHookAddress, isLoading, hookInfo, selectedType]);
@@ -208,7 +219,7 @@ export function HookInformation({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[400px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[400px] relative p-1">
         <AnimatePresence mode="popLayout">
           {displayedEntries.map((entry) => {
             // Log the address to debug
@@ -225,6 +236,7 @@ export function HookInformation({
 
             // Check if this is the highlighted hook
             const isHighlighted =
+              isHighlightActive &&
               highlightedHookAddress &&
               (entry.fields?.address === highlightedHookAddress ||
                 entry.fields?.Address === highlightedHookAddress);
@@ -248,6 +260,10 @@ export function HookInformation({
                   boxShadow: isHighlighted
                     ? "0 0 0 2px rgba(var(--primary), 0.5)"
                     : "none",
+                  transition: {
+                    duration: 0.3,
+                    boxShadow: { duration: isHighlighted ? 0.3 : 1.5 },
+                  },
                 }}
                 exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
                 transition={{
@@ -259,6 +275,7 @@ export function HookInformation({
                   bg-secondary/5 hover:bg-secondary/10 transition-all duration-200 h-full
                   ${hasAddress ? "cursor-pointer hover:border-primary/50 hover:shadow-md" : ""}
                   ${isHighlighted ? "border-primary/50 shadow-md" : ""}
+                  relative z-10 overflow-hidden transform-gpu
                 `}
                 ref={isHighlighted ? highlightedCardRef : null}
                 onClick={() => {
