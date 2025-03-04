@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useHooks } from "../hooks/useHooks";
-import { ChevronDown, ExternalLink, Copy, Check } from "lucide-react";
+import { ChevronDown, ExternalLink, Copy, Check, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HookPoolsModal } from "./HookPoolsModal";
 
@@ -71,7 +71,11 @@ const shortenAddress = (address: string): string => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-export function HooksSummary() {
+interface HooksSummaryProps {
+  onNavigateToHookInfo?: (hookAddress: string, chainId: string) => void;
+}
+
+export function HooksSummary({ onNavigateToHookInfo }: HooksSummaryProps) {
   const { hooks, loading, error } = useHooks();
   const [showAllHooks, setShowAllHooks] = useState(false);
   const [selectedHook, setSelectedHook] = useState<{
@@ -120,6 +124,18 @@ export function HooksSummary() {
     });
 
     return hook?.fields?.Name || null;
+  };
+
+  // Function to navigate to hook information tab
+  const handleNavigateToHookInfo = (
+    hookAddress: string,
+    chainId: string,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation(); // Prevent opening the modal
+    if (onNavigateToHookInfo) {
+      onNavigateToHookInfo(hookAddress, chainId);
+    }
   };
 
   // Reset copied state after 2 seconds
@@ -231,9 +247,26 @@ export function HooksSummary() {
                       <td className="px-4 py-4">
                         <div className="flex flex-col">
                           {hookName && (
-                            <span className="font-medium text-sm text-primary mb-1 truncate">
-                              {hookName}
-                            </span>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="font-medium text-sm text-primary truncate">
+                                {hookName}
+                              </span>
+                              {onNavigateToHookInfo && (
+                                <button
+                                  onClick={(e) =>
+                                    handleNavigateToHookInfo(
+                                      hookAddress,
+                                      chainId,
+                                      e
+                                    )
+                                  }
+                                  className="p-0.5 rounded-full hover:bg-secondary/70 transition-colors flex-shrink-0 text-primary/70 hover:text-primary"
+                                  title="View hook details"
+                                >
+                                  <Info className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           )}
                           <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
                             <span className="truncate">

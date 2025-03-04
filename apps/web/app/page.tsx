@@ -62,6 +62,15 @@ export default function Page() {
   const [showAllNetworks, setShowAllNetworks] = useState(false);
   const [showHooksMode, setShowHooksMode] = useState(false);
   const { stats, error } = useStats();
+  const [selectedHookInfoAddress, setSelectedHookInfoAddress] = useState<
+    string | null
+  >(null);
+
+  // Function to navigate to hook information tab and highlight a specific hook
+  const navigateToHookInfo = (hookAddress: string, chainId: string) => {
+    setActiveTab("hook-info");
+    setSelectedHookInfoAddress(`${chainId}_${hookAddress}`);
+  };
 
   if (error) {
     return (
@@ -295,7 +304,7 @@ export default function Page() {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <HooksSummary />
+                  <HooksSummary onNavigateToHookInfo={navigateToHookInfo} />
                 </motion.div>
               )}
               {activeTab === "hook-info" && (
@@ -306,7 +315,9 @@ export default function Page() {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <HookInformation />
+                  <HookInformation
+                    highlightedHookAddress={selectedHookInfoAddress}
+                  />
                 </motion.div>
               )}
               {activeTab === "apis" && (

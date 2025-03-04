@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertCircle, ChevronDown, ExternalLink, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { HookPoolsModal } from "./HookPoolsModal";
@@ -8,7 +8,13 @@ interface HookInfo {
   fields: Record<string, any>;
 }
 
-export function HookInformation() {
+interface HookInformationProps {
+  highlightedHookAddress?: string | null;
+}
+
+export function HookInformation({
+  highlightedHookAddress,
+}: HookInformationProps) {
   const [hookInfo, setHookInfo] = useState<HookInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +24,9 @@ export function HookInformation() {
   const [selectedHook, setSelectedHook] = useState<{
     address: string;
     chainId: string;
+    name: string;
   } | null>(null);
+  const highlightedCardRef = useRef<HTMLDivElement>(null);
 
   // Function to extract chain ID from the address format (chainId_address)
   const extractChainId = (addressWithChain: string | undefined): string => {
@@ -60,6 +68,38 @@ export function HookInformation() {
 
     fetchHookInfo();
   }, []);
+
+  // Effect to scroll to highlighted hook when it changes
+  useEffect(() => {
+    if (highlightedHookAddress && !isLoading && hookInfo.length > 0) {
+      // Find the hook with the matching address
+      const hookToHighlight = hookInfo.find((h) => {
+        const addressField = h.fields?.address || h.fields?.Address || "";
+        return addressField === highlightedHookAddress;
+      });
+
+      if (hookToHighlight) {
+        // If the hook is found, make sure its type is selected
+        if (
+          hookToHighlight.fields?.Type &&
+          selectedType !== "All" &&
+          !hookToHighlight.fields.Type.includes(selectedType)
+        ) {
+          setSelectedType("All");
+        }
+
+        // Set a timeout to allow the UI to update before scrolling
+        setTimeout(() => {
+          if (highlightedCardRef.current) {
+            highlightedCardRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [highlightedHookAddress, isLoading, hookInfo, selectedType]);
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -183,6 +223,12 @@ export function HookInformation() {
               addressStr.includes("_") &&
               addressStr.includes("0x");
 
+            // Check if this is the highlighted hook
+            const isHighlighted =
+              highlightedHookAddress &&
+              (entry.fields?.address === highlightedHookAddress ||
+                entry.fields?.Address === highlightedHookAddress);
+
             // Log whether this hook is considered clickable
             if (entry.fields?.address) {
               console.log(
@@ -195,7 +241,14 @@ export function HookInformation() {
                 key={entry.id}
                 layout
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: isHighlighted ? 1.02 : 1,
+                  boxShadow: isHighlighted
+                    ? "0 0 0 2px rgba(var(--primary), 0.5)"
+                    : "none",
+                }}
                 exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }}
                 transition={{
                   duration: 0.3,
@@ -205,7 +258,9 @@ export function HookInformation() {
                   group flex flex-col p-4 rounded-lg border border-border/50 
                   bg-secondary/5 hover:bg-secondary/10 transition-all duration-200 h-full
                   ${hasAddress ? "cursor-pointer hover:border-primary/50 hover:shadow-md" : ""}
+                  ${isHighlighted ? "border-primary/50 shadow-md" : ""}
                 `}
+                ref={isHighlighted ? highlightedCardRef : null}
                 onClick={() => {
                   console.log(
                     `Hook clicked: ${entry.fields?.Name}, Has address: ${hasAddress}`
@@ -222,6 +277,7 @@ export function HookInformation() {
                     setSelectedHook({
                       address: extractedAddress,
                       chainId: extractedChainId,
+                      name: entry.fields?.Name || "Unnamed Hook",
                     });
                   }
                 }}
@@ -314,6 +370,7 @@ export function HookInformation() {
                         setSelectedHook({
                           address: extractedAddress,
                           chainId: extractedChainId,
+                          name: entry.fields?.Name || "Unnamed Hook",
                         });
                       }}
                     >
