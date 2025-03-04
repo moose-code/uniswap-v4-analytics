@@ -30,7 +30,7 @@ export async function GET() {
     const records = await base("hooks").select().all();
 
     // Log a few records to debug
-    if (records.length > 0) {
+    if (records.length > 0 && records[0] && records[0].fields) {
       console.log(
         "Sample Airtable record fields:",
         JSON.stringify(records[0].fields, null, 2)
@@ -71,7 +71,7 @@ export async function GET() {
     });
 
     // Log the first processed record for debugging
-    if (data.length > 0) {
+    if (data.length > 0 && data[0]) {
       console.log("First processed record:", JSON.stringify(data[0], null, 2));
     }
 

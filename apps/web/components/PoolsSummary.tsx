@@ -1,8 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { usePools } from "../hooks/usePools";
-import { ChevronDown, ExternalLink, Copy, Check } from "lucide-react";
+import { ChevronDown, ExternalLink, Copy, Check, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PoolSwapsModal } from "./PoolSwapsModal";
+import { useHookInfo } from "@/hooks/useHookInfo";
+
+// Define the HookInfo interface
+interface HookInfo {
+  id: string;
+  fields: Record<string, any>;
+}
 
 // Helper function to extract chain ID from the new format
 const extractChainId = (id: string): string => {
@@ -34,6 +41,27 @@ const extractPoolAddress = (id: string): string => {
     return address || id;
   }
   return id;
+};
+
+// Helper function to extract hook address from the hooks field
+const extractHookAddress = (hooks: string | null | undefined): string => {
+  if (!hooks) return "";
+  return hooks;
+};
+
+// Helper function to check if an address is the zero address
+const isZeroAddress = (address: string): boolean => {
+  if (!address) return true;
+
+  // Remove '0x' prefix if present
+  const cleanAddress = address.startsWith("0x") ? address.slice(2) : address;
+
+  // Check if the address consists only of zeros or is empty
+  return (
+    cleanAddress.length === 0 ||
+    /^0+$/.test(cleanAddress) ||
+    address === "0x0000000000000000000000000000000000000000"
+  );
 };
 
 // Helper function to shorten address for display
@@ -82,8 +110,13 @@ const NETWORK_SLUGS: Record<string, string> = {
   "7777777": "zora",
 };
 
-export function PoolsSummary() {
+interface PoolsSummaryProps {
+  onNavigateToHookInfo?: (hookAddress: string, chainId: string) => void;
+}
+
+export function PoolsSummary({ onNavigateToHookInfo }: PoolsSummaryProps) {
   const { pools, loading, error } = usePools();
+  const { hookInfo, isLoading: hookInfoLoading } = useHookInfo();
   const [showAllPools, setShowAllPools] = useState(false);
   const [selectedPool, setSelectedPool] = useState<{
     id: string;
@@ -92,6 +125,37 @@ export function PoolsSummary() {
     token1: string;
   } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Function to get hook name by address
+  const getHookNameByAddress = (
+    hookAddress: string,
+    chainId: string
+  ): string | null => {
+    if (!hookInfo || hookInfoLoading || !hookAddress) return null;
+
+    // Format the address to include chain ID for comparison
+    const formattedHookAddress = `${chainId}_${hookAddress}`;
+
+    // Look for a hook with matching address
+    const hook = hookInfo.find((h: HookInfo) => {
+      const addressField = h.fields?.address || h.fields?.Address || "";
+      return addressField === formattedHookAddress;
+    });
+
+    return hook?.fields?.Name || null;
+  };
+
+  // Function to navigate to hook information tab
+  const handleNavigateToHookInfo = (
+    hookAddress: string,
+    chainId: string,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation(); // Prevent opening the modal
+    if (onNavigateToHookInfo) {
+      onNavigateToHookInfo(hookAddress, chainId);
+    }
+  };
 
   // Reset copied state after 2 seconds
   useEffect(() => {
@@ -126,15 +190,15 @@ export function PoolsSummary() {
   return (
     <>
       <div className="w-full space-y-6">
-        <div className="rounded-lg border border-border/50 overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="rounded-lg border border-border/50 overflow-hidden w-full">
+          <div className="overflow-x-auto w-full">
             <table className="w-full table-auto md:table-fixed">
               <thead>
                 <tr className="border-b border-border/50 bg-secondary/30">
-                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[35%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[25%]">
                     Pool Name
                   </th>
-                  <th className="px-3 md:px-4 py-3 text-center text-xs font-medium text-muted-foreground md:w-[15%]">
+                  <th className="px-3 md:px-4 py-3 text-center text-xs font-medium text-muted-foreground md:w-[12%]">
                     Network
                   </th>
                   <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[15%]">
@@ -143,8 +207,11 @@ export function PoolsSummary() {
                   <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[15%]">
                     Volume
                   </th>
-                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[20%]">
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[15%]">
                     Fees
+                  </th>
+                  <th className="px-3 md:px-4 py-3 text-left text-xs font-medium text-muted-foreground md:w-[18%]">
+                    Hook
                   </th>
                 </tr>
               </thead>
@@ -152,10 +219,12 @@ export function PoolsSummary() {
                 {displayedPools.map((pool) => {
                   const chainId = extractChainId(pool.chainId);
                   const poolAddress = extractPoolAddress(pool.id);
+                  const hookAddress = extractHookAddress(pool.hooks);
                   const explorerUrl =
                     NETWORK_EXPLORER_URLS[chainId] || "https://etherscan.io";
                   const networkSlug = NETWORK_SLUGS[chainId] || chainId;
                   const uniswapPoolUrl = `https://app.uniswap.org/explore/pools/${networkSlug}/${poolAddress}`;
+                  const hookName = getHookNameByAddress(hookAddress, chainId);
 
                   // Extract token symbols or names from the pool name if available
                   // Use type assertion to handle the TypeScript error
@@ -194,7 +263,7 @@ export function PoolsSummary() {
                             {pool.name || "Unnamed Pool"}
                           </span>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                            <span className="font-mono truncate max-w-[180px]">
+                            <span className="font-mono text-xs truncate max-w-[180px]">
                               {shortenAddress(poolAddress)}
                             </span>
                             <a
@@ -243,6 +312,34 @@ export function PoolsSummary() {
                           parseFloat(pool.feesUSD) > 0
                             ? pool.feesUSD
                             : pool.feesUSDUntracked
+                        )}
+                      </td>
+                      <td className="px-3 md:px-4 py-4">
+                        {hookAddress && !isZeroAddress(hookAddress) ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-sm truncate">
+                              {hookName || shortenAddress(hookAddress)}
+                            </span>
+                            {onNavigateToHookInfo && (
+                              <button
+                                onClick={(e) =>
+                                  handleNavigateToHookInfo(
+                                    hookAddress,
+                                    chainId,
+                                    e
+                                  )
+                                }
+                                className="w-4 h-4 rounded-full bg-secondary/50 hover:bg-secondary flex items-center justify-center"
+                                title="View hook information"
+                              >
+                                <Info className="w-3 h-3 opacity-70 hover:opacity-100" />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            No Hook
+                          </span>
                         )}
                       </td>
                     </tr>

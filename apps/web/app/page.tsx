@@ -286,14 +286,10 @@ export default function Page() {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="mb-6 flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground bg-secondary/30 rounded-lg">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>
-                      This page is under active development and will be improved
-                      shortly
-                    </span>
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-semibold">Pools</h2>
+                    <PoolsSummary onNavigateToHookInfo={navigateToHookInfo} />
                   </div>
-                  <PoolsSummary />
                 </motion.div>
               )}
               {activeTab === "hooks" && (
