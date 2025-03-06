@@ -5,10 +5,10 @@ import Image from "next/image";
 
 export const LogoHeader = () => {
   return (
-    <div className="flex flex-col items-center mb-4 sm:mb-6">
+    <div className="flex flex-col items-center mb-4 sm:mb-6 relative z-10">
       <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6">
         {/* Logo with glow */}
-        <div className="relative">
+        <div className="relative z-10">
           {/* Multiple glow layers */}
           <motion.div
             className="absolute inset-[-2px] rounded-2xl blur-md"

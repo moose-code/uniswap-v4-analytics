@@ -185,7 +185,7 @@ export function PoolsSummary({ onNavigateToHookInfo }: PoolsSummaryProps) {
 
   const displayedPools = showAllPools
     ? pools?.Pool || []
-    : (pools?.Pool || []).slice(0, 10);
+    : (pools?.Pool || []).slice(0, 8);
 
   return (
     <>
@@ -350,14 +350,14 @@ export function PoolsSummary({ onNavigateToHookInfo }: PoolsSummaryProps) {
           </div>
         </div>
 
-        {pools?.Pool && pools.Pool.length > 10 && (
+        {pools?.Pool && pools.Pool.length > 8 && (
           <button
             onClick={() => setShowAllPools(!showAllPools)}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all duration-200 group"
           >
             <span className="text-sm font-medium">
               {showAllPools
-                ? `Show Top 10 Pools`
+                ? `Show Top 8 Pools`
                 : `Show All Pools (${pools.Pool.length})`}
             </span>
             <motion.div

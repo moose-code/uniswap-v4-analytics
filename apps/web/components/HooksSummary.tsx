@@ -186,7 +186,7 @@ export function HooksSummary({ onNavigateToHookInfo }: HooksSummaryProps) {
     : hooks.HookStats.sort(
         (a, b) =>
           parseFloat(b.totalValueLockedUSD) - parseFloat(a.totalValueLockedUSD)
-      ).slice(0, 10);
+      ).slice(0, 8);
 
   return (
     <>
@@ -354,14 +354,14 @@ export function HooksSummary({ onNavigateToHookInfo }: HooksSummaryProps) {
           </div>
         </div>
 
-        {hooks.HookStats.length > 10 && (
+        {hooks.HookStats.length > 8 && (
           <button
             onClick={() => setShowAllHooks(!showAllHooks)}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-all duration-200 group"
           >
             <span className="text-sm font-medium">
               {showAllHooks
-                ? `Show Top 10 Hooks`
+                ? `Show Top 8 Hooks`
                 : `Show All Hooks (${hooks.HookStats.length})`}
             </span>
             <motion.div

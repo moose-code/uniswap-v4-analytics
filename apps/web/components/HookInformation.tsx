@@ -166,7 +166,7 @@ export function HookInformation({
 
   const displayedEntries = showAllEntries
     ? sortedHooks
-    : sortedHooks.slice(0, 9);
+    : sortedHooks.slice(0, 6);
 
   return (
     <div className="w-full space-y-6">
@@ -401,7 +401,7 @@ export function HookInformation({
         </AnimatePresence>
       </div>
 
-      {filteredHooks.length > 9 && (
+      {filteredHooks.length > 6 && (
         <motion.button
           onClick={() => setShowAllEntries(!showAllEntries)}
           className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-secondary/10 hover:bg-secondary/20 transition-all duration-200 group border border-border/50"

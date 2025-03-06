@@ -54,17 +54,17 @@ export function TabsContainer({
           ))}
         </div>
       </div>
-      <div className="relative rounded-xl border border-border/50 p-4 md:p-6 pb-12">
+      <div className="relative rounded-xl border border-border/50 p-4 md:p-6 pb-10">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="overflow-x-auto"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-x-auto mb-4"
         >
           {children}
         </motion.div>
-        <div className="absolute bottom-3 right-4 text-xs text-muted-foreground italic">
+        <div className="absolute bottom-2 right-4 text-xs text-muted-foreground italic">
           Last refreshed: {lastRefreshed}
         </div>
       </div>
