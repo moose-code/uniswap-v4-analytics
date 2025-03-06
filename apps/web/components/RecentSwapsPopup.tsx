@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { graphqlClient } from "@/lib/graphql";
+import { Copy, ExternalLink } from "lucide-react";
 
 interface Token {
   id: string;
@@ -24,6 +25,7 @@ interface Swap {
   tick: string;
   chainId: string;
   uniqueId?: string; // Optional unique identifier to prevent key conflicts
+  animationId?: number; // Added to control sequence animations
 }
 
 interface RecentSwapsResponse {
@@ -68,6 +70,19 @@ const extractChainId = (id: string): string => {
   return id;
 };
 
+// Generate a guaranteed unique ID for each swap
+const generateUniqueId = (swapId: string): string => {
+  // Combine swap ID with timestamp (ms) + performance.now() (sub-ms precision) and random string
+  const timestamp = Date.now();
+  const nanoTime =
+    typeof performance !== "undefined"
+      ? performance.now().toString().replace(".", "")
+      : "0";
+  const random = Math.random().toString(36).substring(2, 10);
+
+  return `${swapId}_${timestamp}_${nanoTime}_${random}`;
+};
+
 // Global recent swaps query
 const RECENT_SWAPS_QUERY = `
   query recentSwaps($limit: Int!) {
@@ -104,75 +119,201 @@ const RECENT_SWAPS_QUERY = `
 
 export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
   const [swaps, setSwaps] = useState<Swap[]>([]);
+  const [pendingSwaps, setPendingSwaps] = useState<Swap[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const prevSwapsRef = useRef<Swap[]>([]);
-  const [newSwapIds, setNewSwapIds] = useState<string[]>([]);
-  const [animatingSwaps, setAnimatingSwaps] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const animationCounterRef = useRef<number>(0);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Add swap animation one by one
+  const processNextPendingSwap = useCallback(() => {
+    if (isPaused) return;
+
+    setPendingSwaps((current) => {
+      if (current.length === 0) return current;
+
+      const nextSwap = current[0];
+      if (!nextSwap) return current;
+
+      const remainingSwaps = current.slice(1);
+
+      // Add the next swap to the main list
+      setSwaps((prevSwaps) => {
+        // Skip if we already have this swap (by ID)
+        if (prevSwaps.some((existing) => existing.id === nextSwap.id)) {
+          return prevSwaps;
+        }
+
+        // Keep only the latest swaps (max 20)
+        const newSwaps = [nextSwap, ...prevSwaps.slice(0, 19)] as Swap[];
+        return newSwaps;
+      });
+
+      // If there are more pending swaps, schedule the next one
+      if (remainingSwaps.length > 0) {
+        // Adjust the timeouts based on number of remaining swaps
+        // More swaps = faster animations to catch up
+        const timeout = Math.max(50, 250 - remainingSwaps.length * 10);
+        animationTimeoutRef.current = setTimeout(
+          processNextPendingSwap,
+          timeout
+        );
+      }
+
+      return remainingSwaps;
+    });
+  }, [isPaused]);
+
+  // Handle new swaps coming in
+  useEffect(() => {
+    if (pendingSwaps.length > 0 && !isPaused && !animationTimeoutRef.current) {
+      animationTimeoutRef.current = setTimeout(() => {
+        processNextPendingSwap();
+        animationTimeoutRef.current = null;
+      }, 100);
+    }
+
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, [pendingSwaps, isPaused, processNextPendingSwap]);
 
   // Fetch recent swaps
   useEffect(() => {
     if (!isVisible) return;
 
+    let isMounted = true;
     const fetchData = async () => {
+      if (isPaused) return; // Don't fetch if paused
+
       try {
         const data = await graphqlClient.request<RecentSwapsResponse>(
           RECENT_SWAPS_QUERY,
           {
-            limit: 20, // Reduced from 50 to show fewer, more relevant swaps
+            limit: 50, // Fetch more to have a good stream
           }
         );
 
-        // Add a unique identifier to each swap to prevent key conflicts
-        const swapsWithUniqueIds = data.Swap.map((swap, index) => ({
+        if (!isMounted) return;
+
+        // Add a unique identifier to each swap
+        const swapsWithIds = data.Swap.map((swap) => ({
           ...swap,
-          uniqueId: `${swap.id}_${Date.now()}_${index}`,
+          uniqueId: generateUniqueId(swap.id),
         }));
 
-        // Identify new swaps
-        const newIds: string[] = [];
-        swapsWithUniqueIds.forEach((swap) => {
-          if (
+        // Find truly new swaps (not in previous batch)
+        const newSwaps = swapsWithIds.filter(
+          (swap) =>
             !prevSwapsRef.current.some((prevSwap) => prevSwap.id === swap.id)
-          ) {
-            newIds.push(swap.id);
-          }
-        });
+        );
 
-        // Store previous swaps to identify new ones
-        prevSwapsRef.current = [...swaps];
+        // Add animation sequence IDs to new swaps
+        const newSwapsWithAnimationIds = newSwaps.map((swap, index) => ({
+          ...swap,
+          animationId: animationCounterRef.current + index,
+        }));
 
-        // Set animating flag if we have new swaps
-        if (newIds.length > 0) {
-          setAnimatingSwaps(true);
+        // Update counter for next batch
+        animationCounterRef.current += newSwaps.length;
 
-          // Automatically clear the animating flag after all animations complete
-          const maxDelay = Math.min(newIds.length * 50, 500); // Cap at 500ms for many swaps
-          setTimeout(() => {
-            setAnimatingSwaps(false);
-          }, maxDelay + 300); // Add 300ms for the animation duration
+        // If we have new swaps, add them to pending queue
+        if (newSwapsWithAnimationIds.length > 0) {
+          setPendingSwaps((current) => {
+            // Create a Set of existing IDs to avoid duplicates
+            const existingIds = new Set(current.map((swap) => swap.id));
+
+            // Only add swaps that aren't already in the pending queue
+            const filteredNewSwaps = newSwapsWithAnimationIds.filter(
+              (swap) => !existingIds.has(swap.id)
+            );
+
+            return [...current, ...filteredNewSwaps];
+          });
         }
 
-        setSwaps(swapsWithUniqueIds);
-        setNewSwapIds(newIds);
+        // Update reference of previous swaps for next comparison
+        prevSwapsRef.current = swapsWithIds;
+
         setError(null);
       } catch (err) {
         console.error("Error fetching recent swaps:", err);
-        setError("Failed to fetch recent swaps");
+        if (isMounted) {
+          setError("Failed to fetch recent swaps");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
-    // Set up polling for real-time updates - reduced frequency to allow animations to complete
-    const intervalId = setInterval(fetchData, 2000);
-    return () => clearInterval(intervalId);
-  }, [isVisible, swaps.length]);
 
-  // Function to check if a swap is new (not in previous swaps)
-  const isNewSwap = (swap: Swap) => {
-    return newSwapIds.includes(swap.id);
+    // Fetch more frequently (1 second) for more continuous updates
+    const intervalId = setInterval(fetchData, 1000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+      }
+    };
+  }, [isVisible, isPaused]);
+
+  // Inspect with optional timestamp display for older swaps
+  const getSwapTimestamp = (timestamp: string) => {
+    const swapTime = new Date(parseInt(timestamp) * 1000);
+    const now = new Date();
+    const diffSeconds = Math.floor((now.getTime() - swapTime.getTime()) / 1000);
+
+    if (diffSeconds < 5) {
+      return "now";
+    } else if (diffSeconds < 60) {
+      return `${diffSeconds}s ago`;
+    } else {
+      return swapTime.toLocaleTimeString();
+    }
+  };
+
+  // Get block explorer URL based on chain ID
+  const getBlockExplorerUrl = (chainId: string, txHash: string): string => {
+    const explorers: Record<string, string> = {
+      "1": "https://etherscan.io/tx/",
+      "10": "https://optimistic.etherscan.io/tx/",
+      "137": "https://polygonscan.com/tx/",
+      "42161": "https://arbiscan.io/tx/",
+      "8453": "https://basescan.org/tx/",
+      "81457": "https://blastscan.io/tx/",
+      "7777777": "https://explorer.zora.energy/tx/",
+      "56": "https://bscscan.com/tx/",
+      "43114": "https://snowtrace.io/tx/",
+      "57073": "https://inkscan.io/tx/",
+      "1868": "https://sonscan.io/tx/",
+      "130": "https://uniscan.org/tx/",
+    };
+
+    const baseUrl = explorers[chainId] || "https://etherscan.io/tx/"; // Default to Ethereum
+    return `${baseUrl}${txHash}`;
+  };
+
+  // Copy text to clipboard with feedback
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        // Could add a toast notification here if desired
+        console.log("Copied to clipboard:", text);
+      })
+      .catch((err) => {
+        console.error("Failed to copy:", err);
+      });
   };
 
   if (!isVisible) return null;
@@ -184,20 +325,37 @@ export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
       animate={{ opacity: 1, y: 0, height: "auto" }}
       exit={{ opacity: 0, y: -10, height: 0 }}
       transition={{ duration: 0.2 }}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
       style={{
-        // Remove any backdrop filters that might cause blurriness
         backdropFilter: "none",
         WebkitBackdropFilter: "none",
       }}
     >
       <div className="p-3 border-b border-border/50 flex justify-between items-center">
         <h3 className="text-sm font-medium">Real-time Swaps</h3>
-        <div className="text-xs text-muted-foreground">
-          {swaps.length > 0 ? `Showing ${swaps.length} recent swaps` : ""}
+        <div className="flex items-center gap-2">
+          {isPaused && (
+            <div className="bg-pink-500/10 text-pink-500 text-xs px-2 py-0.5 rounded-full">
+              Paused
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            {pendingSwaps.length > 0 ? (
+              <span className="text-pink-500/80">
+                {pendingSwaps.length} swaps incoming
+              </span>
+            ) : (
+              `${swaps.length} recent swaps`
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-h-[400px] overflow-y-auto p-2">
+      <div
+        className="max-h-[400px] overflow-y-auto p-2 relative"
+        style={{ scrollBehavior: "smooth" }}
+      >
         {loading && swaps.length === 0 ? (
           <div className="flex items-center justify-center p-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -207,36 +365,25 @@ export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
         ) : (
           <div className="space-y-2">
             <AnimatePresence initial={false}>
-              {swaps.map((swap, index) => {
+              {swaps.map((swap) => {
+                if (!swap || !swap.uniqueId) return null; // Skip invalid swaps
+
                 const chainId = extractChainId(swap.chainId);
                 const networkName =
                   NETWORK_NAMES[chainId] || `Chain ${chainId}`;
                 const token0Symbol = swap.token0.symbol || "Token0";
                 const token1Symbol = swap.token1.symbol || "Token1";
                 const formattedAmount = formatUSD(swap.amountUSD);
-                const timestamp = new Date(
-                  parseInt(swap.timestamp) * 1000
-                ).toLocaleTimeString();
-                const isNew = isNewSwap(swap);
-
-                // Calculate a shorter delay for high-frequency updates
-                // Use a smaller multiplier (0.05s instead of 0.15s)
-                // Cap the maximum delay to ensure responsiveness
-                const animationDelay =
-                  isNew && animatingSwaps
-                    ? Math.min(index * 0.05, 0.5) // Cap at 0.5s max delay
-                    : 0;
+                const timestamp = getSwapTimestamp(swap.timestamp);
 
                 return (
                   <motion.div
-                    key={swap.uniqueId || `${swap.id}_${Date.now()}`}
-                    className="bg-secondary/30 rounded-lg p-3 overflow-hidden"
+                    key={`swap_${swap.uniqueId}`}
+                    className="bg-secondary/30 rounded-lg p-3 overflow-hidden hover:bg-secondary/50 transition-colors group"
                     initial={{
                       opacity: 0,
-                      y: isNew ? -20 : 0,
-                      backgroundColor: isNew
-                        ? "rgba(34, 197, 94, 0.2)"
-                        : "rgba(0, 0, 0, 0.1)",
+                      y: -20,
+                      backgroundColor: "rgba(236, 72, 153, 0.2)", // Light pink color (tailwind pink-500 with low opacity)
                     }}
                     animate={{
                       opacity: 1,
@@ -244,18 +391,16 @@ export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
                       backgroundColor: "rgba(0, 0, 0, 0.1)",
                       transition: {
                         backgroundColor: { delay: 0.3, duration: 0.5 },
-                        // Add staggered delay for new swaps
-                        delay: animationDelay,
                       },
                     }}
                     exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                     transition={{
-                      duration: 0.2, // Faster animation
+                      duration: 0.3,
                       type: "spring",
                       stiffness: 500,
                       damping: 30,
                     }}
-                    layout="position" // Use position layout to reduce jitter
+                    layout="position"
                   >
                     <div className="flex justify-between items-center mb-1">
                       <div className="text-xs font-medium text-muted-foreground">
@@ -270,27 +415,99 @@ export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
                         {token0Symbol} → {token1Symbol}
                       </div>
                       <motion.div
-                        className="text-sm font-mono text-primary"
-                        initial={{
-                          opacity: isNew ? 0 : 1,
-                          scale: isNew ? 0.8 : 1,
-                        }}
+                        className="text-sm font-mono text-pink-500"
+                        initial={{ opacity: 0, scale: 0.8 }}
                         animate={{
                           opacity: 1,
-                          scale: isNew ? [0.8, 1.1, 1] : 1,
-                          transition: {
-                            delay: animationDelay + 0.05, // Slightly delayed after the container appears
-                            duration: 0.3,
-                          },
+                          scale: [0.8, 1.1, 1],
+                        }}
+                        transition={{
+                          duration: 0.3,
                         }}
                       >
                         {formattedAmount}
                       </motion.div>
                     </div>
+
+                    {/* Transaction details - now shows on entire box hover */}
+                    <motion.div
+                      className="text-xs mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block"
+                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: { duration: 0.2 },
+                      }}
+                      style={{
+                        display: "none",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <span className="whitespace-nowrap font-medium">
+                          Tx:
+                        </span>
+                        <span className="text-xs font-mono">
+                          {swap.transaction.substring(0, 6)}...
+                          {swap.transaction.substring(
+                            swap.transaction.length - 4
+                          )}
+                        </span>
+                        <div className="flex">
+                          <button
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(swap.transaction);
+                            }}
+                            title="Copy transaction hash"
+                          >
+                            <Copy size={11} className="text-pink-500" />
+                          </button>
+                          <a
+                            href={getBlockExplorerUrl(
+                              chainId,
+                              swap.transaction
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => e.stopPropagation()}
+                            title="View on block explorer"
+                          >
+                            <ExternalLink size={11} className="text-pink-500" />
+                          </a>
+                        </div>
+                      </div>
+                    </motion.div>
                   </motion.div>
                 );
               })}
             </AnimatePresence>
+
+            {/* Incoming swaps indicator when paused */}
+            {isPaused && pendingSwaps.length > 0 && (
+              <motion.div
+                className="bg-pink-500/10 text-center py-2 px-4 rounded-md text-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-pulse h-2 w-2 rounded-full bg-pink-500"></div>
+                  <span>{pendingSwaps.length} new swaps waiting</span>
+                </div>
+                <button
+                  className="text-xs text-pink-500 mt-1 hover:underline"
+                  onClick={() => {
+                    setIsPaused(false);
+                    setTimeout(() => setIsPaused(true), 100);
+                  }}
+                >
+                  Click to process
+                </button>
+              </motion.div>
+            )}
           </div>
         )}
       </div>
