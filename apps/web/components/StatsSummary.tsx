@@ -1,5 +1,6 @@
-import { motion, animate } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { motion, animate, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { RecentSwapsPopup } from "./RecentSwapsPopup";
 
 interface StatsSummaryProps {
   globalStats: {
@@ -20,6 +21,7 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
   const swapsRef = useRef<HTMLDivElement>(null);
   const poolsRef = useRef<HTMLDivElement>(null);
   const avgRef = useRef<HTMLDivElement>(null);
+  const [showSwapsPopup, setShowSwapsPopup] = useState(false);
 
   const previousValues = useRef({
     swaps: globalStats.totalSwaps,
@@ -81,8 +83,15 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-      <div className="p-4 rounded-lg bg-secondary/50 space-y-1">
-        <div className="text-sm text-muted-foreground">Total Swaps</div>
+      <div
+        className={`p-4 rounded-lg ${showSwapsPopup ? "bg-secondary/80" : "bg-secondary/50"} space-y-1 relative cursor-pointer transition-all duration-200 hover:bg-secondary/80 hover:shadow-md hover:scale-[1.02] group z-20`}
+        onMouseEnter={() => setShowSwapsPopup(true)}
+        onMouseLeave={() => setShowSwapsPopup(false)}
+      >
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          Total Swaps
+          <span className="inline-block w-2 h-2 rounded-full bg-primary/70 animate-pulse group-hover:bg-primary"></span>
+        </div>
         <motion.div
           ref={swapsRef}
           className="text-2xl font-mono tabular-nums"
@@ -96,7 +105,12 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
         >
           {globalStats.totalSwaps.toLocaleString()}
         </motion.div>
+
+        <AnimatePresence>
+          {showSwapsPopup && <RecentSwapsPopup isVisible={showSwapsPopup} />}
+        </AnimatePresence>
       </div>
+
       <div className="p-4 rounded-lg bg-secondary/50 space-y-1">
         <div className="text-sm text-muted-foreground">Total Pools</div>
         <motion.div

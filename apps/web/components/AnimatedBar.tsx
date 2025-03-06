@@ -67,7 +67,10 @@ export function AnimatedBar({
 
   if (mode === "overview") {
     return (
-      <motion.div layout className="flex items-center gap-4 w-full group">
+      <motion.div
+        layout
+        className="flex items-center gap-4 w-full group relative z-10"
+      >
         <div className="w-24 text-sm font-mono">{label}</div>
         <div className="flex-1 space-y-2">
           <div className="h-4 bg-secondary rounded-md overflow-hidden">
@@ -130,7 +133,7 @@ export function AnimatedBar({
   return (
     <motion.div
       layout
-      className="p-3 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors"
+      className="p-3 rounded-lg bg-secondary/20 hover:bg-secondary/30 transition-colors relative z-10"
     >
       <motion.div layout className="font-mono text-sm mb-3">
         {label}
