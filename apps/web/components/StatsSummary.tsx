@@ -1,6 +1,7 @@
 import { motion, animate, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { RecentSwapsPopup } from "./RecentSwapsPopup";
+import { RecentPoolsPopup } from "./RecentPoolsPopup";
 
 interface StatsSummaryProps {
   globalStats: {
@@ -22,6 +23,7 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
   const poolsRef = useRef<HTMLDivElement>(null);
   const avgRef = useRef<HTMLDivElement>(null);
   const [showSwapsPopup, setShowSwapsPopup] = useState(false);
+  const [showPoolsPopup, setShowPoolsPopup] = useState(false);
 
   const previousValues = useRef({
     swaps: globalStats.totalSwaps,
@@ -111,8 +113,15 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
         </AnimatePresence>
       </div>
 
-      <div className="p-4 rounded-lg bg-secondary/50 space-y-1">
-        <div className="text-sm text-muted-foreground">Total Pools</div>
+      <div
+        className={`p-4 rounded-lg ${showPoolsPopup ? "bg-secondary/80" : "bg-secondary/50"} space-y-1 relative cursor-pointer transition-all duration-200 hover:bg-secondary/80 hover:shadow-md hover:scale-[1.02] group z-20`}
+        onMouseEnter={() => setShowPoolsPopup(true)}
+        onMouseLeave={() => setShowPoolsPopup(false)}
+      >
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          Total Pools
+          <span className="inline-block w-2 h-2 rounded-full bg-primary/70 animate-pulse group-hover:bg-primary"></span>
+        </div>
         <motion.div
           ref={poolsRef}
           className="text-2xl font-mono tabular-nums"
@@ -130,7 +139,12 @@ export function StatsSummary({ globalStats, networkStats }: StatsSummaryProps) {
         >
           {globalStats.totalPools.toLocaleString()}
         </motion.div>
+
+        <AnimatePresence>
+          {showPoolsPopup && <RecentPoolsPopup isVisible={showPoolsPopup} />}
+        </AnimatePresence>
       </div>
+
       <div className="p-4 rounded-lg bg-secondary/50 space-y-1">
         <div className="text-sm text-muted-foreground">Avg Swaps/Pool</div>
         <motion.div
