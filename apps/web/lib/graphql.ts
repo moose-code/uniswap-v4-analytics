@@ -13,6 +13,9 @@ export const STATS_QUERY = `
       numberOfSwaps
       hookedPools
       hookedSwaps
+      totalValueLockedUSD
+      totalVolumeUSD
+      totalFeesUSD
     }
     HookStats {
       id

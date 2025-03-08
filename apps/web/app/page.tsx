@@ -13,6 +13,8 @@ import { HooksSummary } from "@/components/HooksSummary";
 import { HookInformation } from "@/components/HookInformation";
 import { LogoHeader } from "@/components/LogoHeader";
 import { ApisContent } from "@/components/ApisContent";
+import { TvlSummary } from "@/components/TvlSummary";
+import { TvlAnimatedBar } from "@/components/TvlAnimatedBar";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -41,6 +43,7 @@ const extractChainId = (id: string): string => {
 
 const TABS = [
   { id: "overview", label: "Swaps" },
+  { id: "tvl", label: "TVL" },
   { id: "pools", label: "Pools" },
   { id: "hooks", label: "Hooks" },
   { id: "hook-info", label: "Hook Information" },
@@ -55,6 +58,9 @@ type PoolManagerStat = {
   numberOfSwaps: string;
   hookedPools: string;
   hookedSwaps: string;
+  totalValueLockedUSD?: string;
+  totalVolumeUSD?: string;
+  totalFeesUSD?: string;
 };
 
 export default function Page() {
@@ -125,6 +131,32 @@ export default function Page() {
         parseInt(stat.poolCount) > 0
           ? parseInt(stat.numberOfSwaps) / parseInt(stat.poolCount)
           : 0,
+    };
+  });
+
+  // Calculate TVL-related stats
+  const totalTVL = sortedStats.reduce(
+    (acc, stat) => acc + parseFloat(stat.totalValueLockedUSD || "0"),
+    0
+  );
+
+  const totalVolume = sortedStats.reduce(
+    (acc, stat) => acc + parseFloat(stat.totalVolumeUSD || "0"),
+    0
+  );
+
+  const totalFees = sortedStats.reduce(
+    (acc, stat) => acc + parseFloat(stat.totalFeesUSD || "0"),
+    0
+  );
+
+  const tvlNetworkStats = sortedStats.map((stat) => {
+    const chainId = extractChainId(stat.id);
+    return {
+      id: stat.id,
+      name: NETWORK_NAMES[chainId] || `Chain ${stat.id}`,
+      tvl: parseFloat(stat.totalValueLockedUSD || "0"),
+      volume: parseFloat(stat.totalVolumeUSD || "0"),
     };
   });
 
@@ -276,6 +308,40 @@ export default function Page() {
                       </motion.div>
                     </button>
                   )}
+                </motion.div>
+              )}
+              {activeTab === "tvl" && (
+                <motion.div
+                  key="tvl"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="space-y-6">
+                    <TvlSummary
+                      globalStats={{
+                        totalTVL,
+                        totalVolume,
+                        totalFees,
+                      }}
+                      networkStats={tvlNetworkStats}
+                    />
+                    <div className="space-y-3">
+                      {tvlNetworkStats
+                        .sort((a, b) => b.tvl - a.tvl)
+                        .map((stat) => (
+                          <TvlAnimatedBar
+                            key={stat.id}
+                            label={stat.name}
+                            tvl={stat.tvl}
+                            maxTvl={totalTVL}
+                            volume={stat.volume}
+                            maxVolume={totalVolume}
+                          />
+                        ))}
+                    </div>
+                  </div>
                 </motion.div>
               )}
               {activeTab === "pools" && (
