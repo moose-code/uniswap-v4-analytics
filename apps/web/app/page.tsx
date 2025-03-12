@@ -15,6 +15,8 @@ import { LogoHeader } from "@/components/LogoHeader";
 import { ApisContent } from "@/components/ApisContent";
 import { TvlSummary } from "@/components/TvlSummary";
 import { TvlAnimatedBar } from "@/components/TvlAnimatedBar";
+import { PulseSwapsColumn } from "@/components/PulseSwapsColumn";
+import { PulsePoolsColumn } from "@/components/PulsePoolsColumn";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -43,6 +45,7 @@ const extractChainId = (id: string): string => {
 
 const TABS = [
   { id: "overview", label: "Swaps" },
+  { id: "pulse", label: "Pulse" },
   { id: "tvl", label: "TVL" },
   { id: "pools", label: "Pools" },
   { id: "hooks", label: "Hooks" },
@@ -76,6 +79,11 @@ export default function Page() {
   const navigateToHookInfo = (hookAddress: string, chainId: string) => {
     setActiveTab("hook-info");
     setSelectedHookInfoAddress(`${chainId}_${hookAddress}`);
+  };
+
+  // Handle tab changes, with special case for Pulse tab
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
   };
 
   if (error) {
@@ -168,7 +176,7 @@ export default function Page() {
           <TabsContainer
             tabs={TABS}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           >
             <AnimatePresence mode="wait">
               {activeTab === "overview" && (
@@ -398,6 +406,36 @@ export default function Page() {
                     </span>
                   </div>
                   <ApisContent />
+                </motion.div>
+              )}
+              {activeTab === "pulse" && (
+                <motion.div
+                  key="pulse"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left column: Recent Swaps */}
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        <PulseSwapsColumn />
+                      </div>
+
+                      {/* Right column: Recent Pools */}
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        <PulsePoolsColumn />
+                      </div>
+                    </div>
+
+                    <div className="text-center text-xs text-muted-foreground mt-2">
+                      <p>
+                        Recent data from Uniswap V4 pools across all supported
+                        networks
+                      </p>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
