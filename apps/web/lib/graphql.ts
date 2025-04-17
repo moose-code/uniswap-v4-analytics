@@ -106,3 +106,79 @@ export const RECENT_SWAPS_BY_POOL_QUERY = `
     }
   }
 `;
+
+export const RECENT_MODIFY_LIQUIDITY_QUERY = `
+  query recentModifyLiquidity($limit: Int!) {
+    ModifyLiquidity(
+      order_by: {timestamp: desc}, 
+      limit: $limit
+    ) {
+      id
+      amount
+      amount0
+      amount1
+      amountUSD
+      origin
+      sender
+      timestamp
+      transaction
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
+      tickLower
+      tickUpper
+      pool {
+        id
+        name
+      }
+      chainId
+    }
+  }
+`;
+
+export const LARGEST_MODIFY_LIQUIDITY_QUERY = `
+  query largestModifyLiquidity($limit: Int!) {
+    ModifyLiquidity(
+      order_by: {amountUSD: desc}, 
+      limit: $limit
+    ) {
+      id
+      amount
+      amount0
+      amount1
+      amountUSD
+      origin
+      sender
+      timestamp
+      transaction
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
+      tickLower
+      tickUpper
+      pool {
+        id
+        name
+      }
+      chainId
+    }
+  }
+`;

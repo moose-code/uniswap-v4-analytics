@@ -17,6 +17,8 @@ import { TvlSummary } from "@/components/TvlSummary";
 import { TvlAnimatedBar } from "@/components/TvlAnimatedBar";
 import { PulseSwapsColumn } from "@/components/PulseSwapsColumn";
 import { PulsePoolsColumn } from "@/components/PulsePoolsColumn";
+import { LiquidityEventsColumn } from "@/components/LiquidityEventsColumn";
+import { LargestLiquidityEventsColumn } from "@/components/LargestLiquidityEventsColumn";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -46,6 +48,7 @@ const extractChainId = (id: string): string => {
 const TABS = [
   { id: "overview", label: "Swaps" },
   { id: "pulse", label: "Pulse" },
+  { id: "liquidity", label: "Liquidity" },
   { id: "tvl", label: "TVL" },
   { id: "pools", label: "Pools" },
   { id: "hooks", label: "Hooks" },
@@ -433,6 +436,36 @@ export default function Page() {
                       <p>
                         Recent data from Uniswap V4 pools across all supported
                         networks
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {activeTab === "liquidity" && (
+                <motion.div
+                  key="liquidity"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left column: Largest Liquidity Events */}
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        <LargestLiquidityEventsColumn />
+                      </div>
+
+                      {/* Right column: Recent Liquidity Events */}
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        <LiquidityEventsColumn />
+                      </div>
+                    </div>
+
+                    <div className="text-center text-xs text-muted-foreground mt-2">
+                      <p>
+                        Liquidity events from Uniswap V4 pools across all
+                        supported networks
                       </p>
                     </div>
                   </div>
