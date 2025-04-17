@@ -181,7 +181,7 @@ const getBlockExplorerUrl = (chainId: string, address: string): string => {
     "43114": "https://snowtrace.io/address/",
     "57073": "https://inkscan.io/address/",
     "1868": "https://sonscan.io/address/",
-    "130": "https://uniscan.org/address/",
+    "130": "https://uniscan.xyz/address/",
   };
 
   const baseUrl = explorers[chainId] || "https://etherscan.io/address/"; // Default to Ethereum

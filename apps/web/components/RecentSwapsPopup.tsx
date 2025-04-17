@@ -296,7 +296,7 @@ export function RecentSwapsPopup({ isVisible }: { isVisible: boolean }) {
       "43114": "https://snowtrace.io/tx/",
       "57073": "https://inkscan.io/tx/",
       "1868": "https://sonscan.io/tx/",
-      "130": "https://uniscan.org/tx/",
+      "130": "https://uniscan.xyz/tx/",
     };
 
     const baseUrl = explorers[chainId] || "https://etherscan.io/tx/"; // Default to Ethereum

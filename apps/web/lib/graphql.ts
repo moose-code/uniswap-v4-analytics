@@ -149,7 +149,47 @@ export const LARGEST_MODIFY_LIQUIDITY_QUERY = `
   query largestModifyLiquidity($limit: Int!) {
     ModifyLiquidity(
       order_by: {amountUSD: desc}, 
-      limit: $limit
+      limit: $limit,
+      where: {amountUSD: {_gt: 0}}
+    ) {
+      id
+      amount
+      amount0
+      amount1
+      amountUSD
+      origin
+      sender
+      timestamp
+      transaction
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
+      tickLower
+      tickUpper
+      pool {
+        id
+        name
+      }
+      chainId
+    }
+  }
+`;
+
+export const LARGEST_REMOVE_LIQUIDITY_QUERY = `
+  query largestRemoveLiquidity($limit: Int!) {
+    ModifyLiquidity(
+      order_by: {amountUSD: asc}, 
+      limit: $limit,
+      where: {amountUSD: {_lt: 0}}
     ) {
       id
       amount

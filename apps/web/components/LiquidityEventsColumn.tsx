@@ -50,8 +50,14 @@ const formatUSD = (value: string): string => {
     return `${sign}$${(absNum / 1_000_000).toFixed(2)}M`;
   } else if (absNum >= 1_000) {
     return `${sign}$${(absNum / 1_000).toFixed(2)}K`;
-  } else {
+  } else if (absNum >= 0.01) {
     return `${sign}$${absNum.toFixed(2)}`;
+  } else if (absNum > 0) {
+    // For very small values, use more decimal places
+    const decimalPlaces = absNum < 0.0001 ? 8 : absNum < 0.01 ? 4 : 2;
+    return `${sign}$${absNum.toFixed(decimalPlaces)}`;
+  } else {
+    return `$0.00`;
   }
 };
 
@@ -278,7 +284,7 @@ export function LiquidityEventsColumn() {
       "43114": "https://snowtrace.io/tx/",
       "57073": "https://inkscan.io/tx/",
       "1868": "https://sonscan.io/tx/",
-      "130": "https://uniscan.org/tx/",
+      "130": "https://uniscan.xyz/tx/",
     };
 
     const baseUrl = explorers[chainId] || "https://etherscan.io/tx/"; // Default to Ethereum

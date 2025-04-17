@@ -2,7 +2,10 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { graphqlClient } from "@/lib/graphql";
 import { Copy, ExternalLink } from "lucide-react";
-import { LARGEST_MODIFY_LIQUIDITY_QUERY } from "@/lib/graphql";
+import {
+  LARGEST_MODIFY_LIQUIDITY_QUERY,
+  LARGEST_REMOVE_LIQUIDITY_QUERY,
+} from "@/lib/graphql";
 
 interface Token {
   id: string;
@@ -49,8 +52,14 @@ const formatUSD = (value: string): string => {
     return `${sign}$${(absNum / 1_000_000).toFixed(2)}M`;
   } else if (absNum >= 1_000) {
     return `${sign}$${(absNum / 1_000).toFixed(2)}K`;
-  } else {
+  } else if (absNum >= 0.01) {
     return `${sign}$${absNum.toFixed(2)}`;
+  } else if (absNum > 0) {
+    // For very small values, use more decimal places
+    const decimalPlaces = absNum < 0.0001 ? 8 : absNum < 0.01 ? 4 : 2;
+    return `${sign}$${absNum.toFixed(decimalPlaces)}`;
+  } else {
+    return `$0.00`;
   }
 };
 
@@ -94,31 +103,76 @@ const generateUniqueId = (eventId: string): string => {
 };
 
 export function LargestLiquidityEventsColumn() {
-  const [events, setEvents] = useState<LiquidityEvent[]>([]);
+  const [addEvents, setAddEvents] = useState<LiquidityEvent[]>([]);
+  const [removeEvents, setRemoveEvents] = useState<LiquidityEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch largest liquidity events
+  // List of token pairs to filter out (spam tokens)
+  const spamTokenPairs = [
+    { token0: "USED", token1: "CWS" },
+    { token0: "ETH", token1: "FlUID" },
+    { token0: "SIGLOS", token1: "FUTURE" },
+    { token0: "ETH", token1: "LPT" },
+    { token0: "ETH", token1: "tokenA" },
+    { token0: "ETH", token1: "DECT" },
+  ];
+
+  // Helper function to check if a token pair is in the spam list
+  const isSpamTokenPair = (
+    token0Symbol: string,
+    token1Symbol: string
+  ): boolean => {
+    // Normalize token symbols for comparison (to uppercase)
+    const normalizedToken0 = token0Symbol.toUpperCase();
+    const normalizedToken1 = token1Symbol.toUpperCase();
+
+    // Check in both directions (order doesn't matter)
+    return spamTokenPairs.some(
+      (pair) =>
+        (normalizedToken0 === pair.token0.toUpperCase() &&
+          normalizedToken1 === pair.token1.toUpperCase()) ||
+        (normalizedToken0 === pair.token1.toUpperCase() &&
+          normalizedToken1 === pair.token0.toUpperCase())
+    );
+  };
+
+  // Fetch largest liquidity events - both adds and removes
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
       try {
-        const data = await graphqlClient.request<LiquidityEventsResponse>(
+        // Fetch largest adds
+        const addData = await graphqlClient.request<LiquidityEventsResponse>(
           LARGEST_MODIFY_LIQUIDITY_QUERY,
           {
-            limit: 15, // Fetch top N largest events
+            limit: 25, // Fetch top N largest add events
+          }
+        );
+
+        // Fetch largest removes
+        const removeData = await graphqlClient.request<LiquidityEventsResponse>(
+          LARGEST_REMOVE_LIQUIDITY_QUERY,
+          {
+            limit: 25, // Fetch top N largest remove events
           }
         );
 
         if (!isMounted) return;
 
         // Add a unique identifier to each event
-        const eventsWithIds = data.ModifyLiquidity.map((event) => ({
+        const addsWithIds = addData.ModifyLiquidity.map((event) => ({
           ...event,
           uniqueId: generateUniqueId(event.id),
         }));
 
-        setEvents(eventsWithIds);
+        const removesWithIds = removeData.ModifyLiquidity.map((event) => ({
+          ...event,
+          uniqueId: generateUniqueId(event.id),
+        }));
+
+        setAddEvents(addsWithIds);
+        setRemoveEvents(removesWithIds);
         setError(null);
       } catch (err) {
         console.error("Error fetching largest liquidity events:", err);
@@ -143,6 +197,22 @@ export function LargestLiquidityEventsColumn() {
     };
   }, []);
 
+  // Combine and sort events by absolute amount
+  const combinedEvents = [...addEvents, ...removeEvents]
+    .filter(
+      (event) =>
+        !isSpamTokenPair(
+          event.token0.symbol || "Unknown",
+          event.token1.symbol || "Unknown"
+        )
+    )
+    .sort((a, b) => {
+      return (
+        Math.abs(parseFloat(b.amountUSD)) - Math.abs(parseFloat(a.amountUSD))
+      );
+    })
+    .slice(0, 50); // Take top 50 events by absolute size
+
   // Format timestamp for display
   const formatTimestamp = (timestamp: string) => {
     const eventTime = new Date(parseInt(timestamp) * 1000);
@@ -163,7 +233,7 @@ export function LargestLiquidityEventsColumn() {
       "43114": "https://snowtrace.io/tx/",
       "57073": "https://inkscan.io/tx/",
       "1868": "https://sonscan.io/tx/",
-      "130": "https://uniscan.org/tx/",
+      "130": "https://uniscan.xyz/tx/",
     };
 
     const baseUrl = explorers[chainId] || "https://etherscan.io/tx/"; // Default to Ethereum
@@ -188,7 +258,9 @@ export function LargestLiquidityEventsColumn() {
       <div className="p-3 border-b border-border/50 flex justify-between items-center">
         <h3 className="text-sm font-medium">Largest Liquidity Events</h3>
         <div className="text-xs text-muted-foreground">
-          {events.length > 0 ? `${events.length} events` : "Loading events..."}
+          {combinedEvents.length > 0
+            ? `${combinedEvents.length} events`
+            : "Loading events..."}
         </div>
       </div>
 
@@ -205,7 +277,7 @@ export function LargestLiquidityEventsColumn() {
         ) : (
           <div className="space-y-1.5">
             <AnimatePresence initial={true}>
-              {events.map((event, index) => {
+              {combinedEvents.map((event, index) => {
                 if (!event || !event.uniqueId) return null; // Skip invalid events
 
                 const chainId = extractChainId(event.chainId);
@@ -269,7 +341,9 @@ export function LargestLiquidityEventsColumn() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-mono text-pink-500 font-semibold">
+                        <div
+                          className={`text-sm font-mono font-semibold ${isAddLiquidity ? "text-green-500" : "text-red-500"}`}
+                        >
                           {formattedAmount}
                         </div>
                         <div className="flex items-center justify-end mt-0.5">
@@ -304,7 +378,7 @@ export function LargestLiquidityEventsColumn() {
               })}
             </AnimatePresence>
 
-            {events.length === 0 && !loading && !error && (
+            {combinedEvents.length === 0 && !loading && !error && (
               <div className="text-center p-4 text-muted-foreground text-sm">
                 No liquidity events found
               </div>
