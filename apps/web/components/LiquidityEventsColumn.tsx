@@ -61,6 +61,31 @@ const formatUSD = (value: string): string => {
   }
 };
 
+// Helper function to format token amounts with appropriate decimals
+const formatTokenAmount = (amount: string, decimals: string): string => {
+  const num = parseFloat(amount);
+  const absNum = Math.abs(num);
+  const sign = num < 0 ? "-" : "";
+  const decimalPlaces = parseInt(decimals) || 18; // Default to 18 if not provided
+
+  // Adjust displayed decimals based on size
+  let displayDecimals = 2;
+  if (absNum < 0.01) displayDecimals = 4;
+  if (absNum < 0.0001) displayDecimals = 6;
+
+  // For very large numbers, use abbreviations
+  if (absNum >= 1_000_000) {
+    return `${sign}${(absNum / 1_000_000).toFixed(2)}M`;
+  } else if (absNum >= 1_000) {
+    return `${sign}${(absNum / 1_000).toFixed(2)}K`;
+  } else if (absNum === 0) {
+    return "0";
+  } else {
+    // Use fewer decimals for display, but ensure we don't show meaningless zeros
+    return `${sign}${absNum.toFixed(Math.min(displayDecimals, decimalPlaces))}`;
+  }
+};
+
 // Network names mapping
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -422,6 +447,68 @@ export function LiquidityEventsColumn() {
                         {formattedAmount}
                       </motion.div>
                     </div>
+
+                    {/* Token amounts - show on hover */}
+                    <motion.div
+                      className="text-xs mt-1 pt-1 border-t border-border/20 group-hover:!block"
+                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: { duration: 0.2 },
+                      }}
+                      style={{
+                        display: "none",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {(() => {
+                        // Format individual token amounts
+                        const amount0 = formatTokenAmount(
+                          event.amount0,
+                          event.token0.decimals
+                        );
+                        const amount1 = formatTokenAmount(
+                          event.amount1,
+                          event.token1.decimals
+                        );
+
+                        // Determine if tokens were added or removed
+                        const amount0Value = parseFloat(event.amount0);
+                        const amount1Value = parseFloat(event.amount1);
+
+                        // Determine token directions
+                        const token0Direction =
+                          amount0Value > 0 ? "+" : amount0Value < 0 ? "-" : "";
+                        const token1Direction =
+                          amount1Value > 0 ? "+" : amount1Value < 0 ? "-" : "";
+
+                        // Determine token colors
+                        const token0Color =
+                          amount0Value > 0
+                            ? "text-green-500"
+                            : amount0Value < 0
+                              ? "text-red-500"
+                              : "text-muted-foreground";
+                        const token1Color =
+                          amount1Value > 0
+                            ? "text-green-500"
+                            : amount1Value < 0
+                              ? "text-red-500"
+                              : "text-muted-foreground";
+
+                        return (
+                          <>
+                            <div className={token0Color}>
+                              {token0Direction} {amount0} {token0Symbol}
+                            </div>
+                            <div className={token1Color}>
+                              {token1Direction} {amount1} {token1Symbol}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </motion.div>
 
                     {/* Transaction details - shows on hover */}
                     <motion.div

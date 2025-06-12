@@ -102,6 +102,31 @@ const generateUniqueId = (eventId: string): string => {
   return `${eventId}_${timestamp}_${nanoTime}_${random}`;
 };
 
+// Helper function to format token amounts with appropriate decimals
+const formatTokenAmount = (amount: string, decimals: string): string => {
+  const num = parseFloat(amount);
+  const absNum = Math.abs(num);
+  const sign = num < 0 ? "-" : "";
+  const decimalPlaces = parseInt(decimals) || 18; // Default to 18 if not provided
+
+  // Adjust displayed decimals based on size
+  let displayDecimals = 2;
+  if (absNum < 0.01) displayDecimals = 4;
+  if (absNum < 0.0001) displayDecimals = 6;
+
+  // For very large numbers, use abbreviations
+  if (absNum >= 1_000_000) {
+    return `${sign}${(absNum / 1_000_000).toFixed(2)}M`;
+  } else if (absNum >= 1_000) {
+    return `${sign}${(absNum / 1_000).toFixed(2)}K`;
+  } else if (absNum === 0) {
+    return "0";
+  } else {
+    // Use fewer decimals for display, but ensure we don't show meaningless zeros
+    return `${sign}${absNum.toFixed(Math.min(displayDecimals, decimalPlaces))}`;
+  }
+};
+
 export function LargestLiquidityEventsColumn() {
   const [addEvents, setAddEvents] = useState<LiquidityEvent[]>([]);
   const [removeEvents, setRemoveEvents] = useState<LiquidityEvent[]>([]);
@@ -296,6 +321,40 @@ export function LargestLiquidityEventsColumn() {
                   ? "text-green-500"
                   : "text-red-500";
 
+                // Format individual token amounts
+                const amount0 = formatTokenAmount(
+                  event.amount0,
+                  event.token0.decimals
+                );
+                const amount1 = formatTokenAmount(
+                  event.amount1,
+                  event.token1.decimals
+                );
+
+                // Determine if both tokens were added/removed or just one
+                const amount0Value = parseFloat(event.amount0);
+                const amount1Value = parseFloat(event.amount1);
+
+                // Determine token directions
+                const token0Direction =
+                  amount0Value > 0 ? "+" : amount0Value < 0 ? "-" : "";
+                const token1Direction =
+                  amount1Value > 0 ? "+" : amount1Value < 0 ? "-" : "";
+
+                // Determine token colors
+                const token0Color =
+                  amount0Value > 0
+                    ? "text-green-500"
+                    : amount0Value < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground";
+                const token1Color =
+                  amount1Value > 0
+                    ? "text-green-500"
+                    : amount1Value < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground";
+
                 return (
                   <motion.div
                     key={`event_${event.uniqueId}`}
@@ -338,6 +397,15 @@ export function LargestLiquidityEventsColumn() {
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
                           {poolName}
+                        </div>
+                        {/* Token amounts */}
+                        <div className="mt-1 pt-1 border-t border-border/20 text-xs">
+                          <div className={token0Color}>
+                            {token0Direction} {amount0} {token0Symbol}
+                          </div>
+                          <div className={token1Color}>
+                            {token1Direction} {amount1} {token1Symbol}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
