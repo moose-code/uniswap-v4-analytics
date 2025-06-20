@@ -76,7 +76,7 @@ const calculatePriceFromSqrtPriceX96 = (
 const processSwapsForChart = (
   swaps: Swap[],
   chainId: string,
-  maxPoints: number = 50
+  maxPoints: number = 25
 ) => {
   const filteredSwaps = swaps
     .filter((swap) => swap.chainId === chainId)
@@ -151,10 +151,10 @@ export function useArbitrage() {
   const basePool = pools.find((p) => p.chainId === "8453");
 
   // Process swaps into chart data for all chains
-  const ethChartData = processSwapsForChart(swaps, "1", 50);
-  const unichainChartData = processSwapsForChart(swaps, "130", 50);
-  const arbitrumChartData = processSwapsForChart(swaps, "42161", 50);
-  const baseChartData = processSwapsForChart(swaps, "8453", 50);
+  const ethChartData = processSwapsForChart(swaps, "1", 25);
+  const unichainChartData = processSwapsForChart(swaps, "130", 25);
+  const arbitrumChartData = processSwapsForChart(swaps, "42161", 25);
+  const baseChartData = processSwapsForChart(swaps, "8453", 25);
 
   // Get current prices from most recent swaps for all chains
   const getCurrentPrice = (chartData: any[]) => {

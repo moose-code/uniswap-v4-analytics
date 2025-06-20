@@ -23,7 +23,7 @@ const formatUSD = (value: string | number): string => {
 
 // Helper function to format price
 const formatPrice = (price: number): string => {
-  return `$${price.toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
+  return `$${price.toLocaleString("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 })}`;
 };
 
 // Helper function to shorten address
@@ -86,7 +86,7 @@ const PriceChart = ({
   width = 800,
   height = 400,
 }: PriceChartProps) => {
-  const padding = 60;
+  const padding = 80;
   const chartWidth = width - 2 * padding;
   const chartHeight = height - 2 * padding;
 
@@ -94,8 +94,19 @@ const PriceChart = ({
   const allData = [...ethData, ...unichainData, ...arbitrumData, ...baseData];
   if (allData.length === 0) return null;
 
-  const minPrice = Math.min(...allData.map((d) => d.price)) * 0.999;
-  const maxPrice = Math.max(...allData.map((d) => d.price)) * 1.001;
+  // Extreme y-axis zoom for maximum granularity to see tiny price differences
+  const dataMinPrice = Math.min(...allData.map((d) => d.price));
+  const dataMaxPrice = Math.max(...allData.map((d) => d.price));
+  const priceRange = dataMaxPrice - dataMinPrice;
+
+  // Use extremely small padding - zoom in as much as possible
+  const padding_percentage = Math.max(
+    0.0001, // Absolute minimum 0.01% padding
+    (priceRange / dataMinPrice) * 0.01 // Or 1% of the relative range
+  ); // Maximum zoom for tiny differences
+
+  const minPrice = dataMinPrice * (1 - padding_percentage);
+  const maxPrice = dataMaxPrice * (1 + padding_percentage);
   const minTime = Math.min(...allData.map((d) => d.timestamp));
   const maxTime = Math.max(...allData.map((d) => d.timestamp));
 
@@ -123,26 +134,28 @@ const PriceChart = ({
   const arbitrumPath = createPath(arbitrumData);
   const basePath = createPath(baseData);
 
-  // Y-axis ticks
+  // Y-axis ticks (maximum ticks for ultra-fine granularity)
   const yTicks = [];
-  for (let i = 0; i <= 5; i++) {
-    const price = minPrice + (maxPrice - minPrice) * (i / 5);
+  for (let i = 0; i <= 12; i++) {
+    const price = minPrice + (maxPrice - minPrice) * (i / 12);
     yTicks.push(price);
   }
 
-  // X-axis ticks (show 5 time points)
+  // X-axis ticks (show 4 time points to reduce clutter)
   const xTicks = [];
-  for (let i = 0; i <= 4; i++) {
-    const timestamp = minTime + (maxTime - minTime) * (i / 4);
+  for (let i = 0; i <= 3; i++) {
+    const timestamp = minTime + (maxTime - minTime) * (i / 3);
     xTicks.push(timestamp);
   }
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full">
       <svg
-        width={width}
+        width="100%"
         height={height}
-        className="border border-border/20 rounded-lg bg-background"
+        viewBox={`0 0 ${width} ${height}`}
+        className="border border-border/20 rounded-lg bg-background max-w-full"
+        preserveAspectRatio="xMidYMid meet"
       >
         {/* Grid lines */}
         <defs>
@@ -330,7 +343,7 @@ const PriceChart = ({
         ))}
 
         {/* Legend */}
-        <g transform={`translate(${width - 150}, ${padding + 20})`}>
+        <g transform={`translate(${padding + 20}, ${padding + 20})`}>
           <rect width="140" height="90" fill="rgba(0,0,0,0.1)" rx="4" />
           <line
             x1="10"
@@ -568,38 +581,38 @@ export function ArbitrageSummary() {
                 {ethChartData && ethChartData.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                    <span>Ethereum ({ethChartData.length})</span>
+                    <span>Ethereum</span>
                   </div>
                 )}
                 {unichainChartData && unichainChartData.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    <span>Unichain ({unichainChartData.length})</span>
+                    <span>Unichain</span>
                   </div>
                 )}
                 {arbitrumChartData && arbitrumChartData.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                    <span>Arbitrum ({arbitrumChartData.length})</span>
+                    <span>Arbitrum</span>
                   </div>
                 )}
                 {baseChartData && baseChartData.length > 0 && (
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span>Base ({baseChartData.length})</span>
+                    <span>Base</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
-          <div className="p-6">
+          <div className="p-4">
             <PriceChart
               ethData={ethChartData || []}
               unichainData={unichainChartData || []}
               arbitrumData={arbitrumChartData || []}
               baseData={baseChartData || []}
-              width={800}
-              height={400}
+              width={700}
+              height={350}
             />
           </div>
         </motion.div>
