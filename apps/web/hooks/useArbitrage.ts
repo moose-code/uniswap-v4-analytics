@@ -138,8 +138,8 @@ export function useArbitrage() {
     // Initial fetch
     fetchData();
 
-    // Poll every 2 seconds for real-time updates
-    const interval = setInterval(fetchData, 2000);
+    // Poll every 1 second for real-time updates
+    const interval = setInterval(fetchData, 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -178,11 +178,22 @@ export function useArbitrage() {
           ethToUnichain: ((ethPrice - unichainPrice) / ethPrice) * 100,
           ethToArbitrum: ((ethPrice - arbitrumPrice) / ethPrice) * 100,
           ethToBase: ((ethPrice - basePrice) / ethPrice) * 100,
-          maxDifference: Math.max(
-            Math.abs(((ethPrice - unichainPrice) / ethPrice) * 100),
-            Math.abs(((ethPrice - arbitrumPrice) / ethPrice) * 100),
-            Math.abs(((ethPrice - basePrice) / ethPrice) * 100)
-          ),
+          maxDifference: (() => {
+            // Find maximum difference between ANY two pools
+            const prices = [
+              ethPrice,
+              unichainPrice,
+              arbitrumPrice,
+              basePrice,
+            ].filter((p) => p > 0);
+            if (prices.length < 2) return 0;
+
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+
+            // Calculate percentage difference between min and max prices
+            return ((maxPrice - minPrice) / minPrice) * 100;
+          })(),
         }
       : null;
 

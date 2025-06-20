@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, animate } from "framer-motion";
 import { useArbitrage } from "@/hooks/useArbitrage";
 import {
   TrendingUp,
@@ -9,7 +9,7 @@ import {
   Maximize2,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Helper function to format USD values
 const formatUSD = (value: string | number): string => {
@@ -481,6 +481,116 @@ export function ArbitrageSummary() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Refs for counting animations
+  const ethPriceRef = useRef<HTMLDivElement>(null);
+  const unichainPriceRef = useRef<HTMLDivElement>(null);
+  const arbitrumPriceRef = useRef<HTMLDivElement>(null);
+  const basePriceRef = useRef<HTMLDivElement>(null);
+  const ethToUnichainRef = useRef<HTMLSpanElement>(null);
+  const ethToArbitrumRef = useRef<HTMLSpanElement>(null);
+  const ethToBaseRef = useRef<HTMLSpanElement>(null);
+  const maxDifferenceRef = useRef<HTMLDivElement>(null);
+
+  // Track previous values for animations
+  const previousValues = useRef({
+    ethPrice: 0,
+    unichainPrice: 0,
+    arbitrumPrice: 0,
+    basePrice: 0,
+    ethToUnichain: 0,
+    ethToArbitrum: 0,
+    ethToBase: 0,
+    maxDifference: 0,
+  });
+
+  // Animate price values when they change
+  useEffect(() => {
+    if (!priceDifferences) return;
+
+    const animateValue = (
+      ref: React.RefObject<HTMLElement>,
+      start: number,
+      end: number,
+      format: (value: number) => string
+    ) => {
+      if (!ref.current) return;
+      const controls = animate(start, end, {
+        duration: 0.8,
+        ease: [0.32, 0.72, 0, 1],
+        onUpdate(value) {
+          if (ref.current) {
+            ref.current.textContent = format(value);
+          }
+        },
+      });
+      return controls.stop;
+    };
+
+    const cleanups = [
+      animateValue(
+        ethPriceRef,
+        previousValues.current.ethPrice,
+        priceDifferences.ethPrice,
+        (v) => formatPrice(v)
+      ),
+      animateValue(
+        unichainPriceRef,
+        previousValues.current.unichainPrice,
+        priceDifferences.unichainPrice,
+        (v) => formatPrice(v)
+      ),
+      animateValue(
+        arbitrumPriceRef,
+        previousValues.current.arbitrumPrice,
+        priceDifferences.arbitrumPrice,
+        (v) => formatPrice(v)
+      ),
+      animateValue(
+        basePriceRef,
+        previousValues.current.basePrice,
+        priceDifferences.basePrice,
+        (v) => formatPrice(v)
+      ),
+      animateValue(
+        ethToUnichainRef,
+        previousValues.current.ethToUnichain,
+        priceDifferences.ethToUnichain,
+        (v) => `${v.toFixed(2)}%`
+      ),
+      animateValue(
+        ethToArbitrumRef,
+        previousValues.current.ethToArbitrum,
+        priceDifferences.ethToArbitrum,
+        (v) => `${v.toFixed(2)}%`
+      ),
+      animateValue(
+        ethToBaseRef,
+        previousValues.current.ethToBase,
+        priceDifferences.ethToBase,
+        (v) => `${v.toFixed(2)}%`
+      ),
+      animateValue(
+        maxDifferenceRef,
+        previousValues.current.maxDifference,
+        priceDifferences.maxDifference,
+        (v) => `${v.toFixed(3)}%`
+      ),
+    ];
+
+    previousValues.current = {
+      ethPrice: priceDifferences.ethPrice,
+      unichainPrice: priceDifferences.unichainPrice,
+      arbitrumPrice: priceDifferences.arbitrumPrice,
+      basePrice: priceDifferences.basePrice,
+      ethToUnichain: priceDifferences.ethToUnichain,
+      ethToArbitrum: priceDifferences.ethToArbitrum,
+      ethToBase: priceDifferences.ethToBase,
+      maxDifference: priceDifferences.maxDifference,
+    };
+
+    return () => cleanups.forEach((cleanup) => cleanup?.());
+  }, [priceDifferences]);
+
   if (loading && !pools.length) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -593,7 +703,10 @@ export function ArbitrageSummary() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Ethereum</div>
-              <div className="text-xl font-mono text-gray-500">
+              <div
+                ref={ethPriceRef}
+                className="text-xl font-mono text-gray-500 tabular-nums"
+              >
                 {formatPrice(priceDifferences.ethPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -606,7 +719,10 @@ export function ArbitrageSummary() {
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Unichain</div>
-              <div className="text-xl font-mono text-pink-500">
+              <div
+                ref={unichainPriceRef}
+                className="text-xl font-mono text-pink-500 tabular-nums"
+              >
                 {formatPrice(priceDifferences.unichainPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -617,7 +733,8 @@ export function ArbitrageSummary() {
               </div>
               <div className="text-xs text-center mt-1">
                 <span
-                  className={`font-semibold ${Math.abs(priceDifferences.ethToUnichain) > 1 ? "text-orange-500" : "text-green-500"}`}
+                  ref={ethToUnichainRef}
+                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToUnichain) > 1 ? "text-orange-500" : "text-green-500"}`}
                 >
                   {priceDifferences.ethToUnichain.toFixed(2)}%
                 </span>
@@ -626,7 +743,10 @@ export function ArbitrageSummary() {
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Arbitrum</div>
-              <div className="text-xl font-mono text-orange-500">
+              <div
+                ref={arbitrumPriceRef}
+                className="text-xl font-mono text-orange-500 tabular-nums"
+              >
                 {formatPrice(priceDifferences.arbitrumPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -637,7 +757,8 @@ export function ArbitrageSummary() {
               </div>
               <div className="text-xs text-center mt-1">
                 <span
-                  className={`font-semibold ${Math.abs(priceDifferences.ethToArbitrum) > 1 ? "text-orange-500" : "text-green-500"}`}
+                  ref={ethToArbitrumRef}
+                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToArbitrum) > 1 ? "text-orange-500" : "text-green-500"}`}
                 >
                   {priceDifferences.ethToArbitrum.toFixed(2)}%
                 </span>
@@ -646,7 +767,10 @@ export function ArbitrageSummary() {
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Base</div>
-              <div className="text-xl font-mono text-blue-500">
+              <div
+                ref={basePriceRef}
+                className="text-xl font-mono text-blue-500 tabular-nums"
+              >
                 {formatPrice(priceDifferences.basePrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -655,7 +779,8 @@ export function ArbitrageSummary() {
               </div>
               <div className="text-xs text-center mt-1">
                 <span
-                  className={`font-semibold ${Math.abs(priceDifferences.ethToBase) > 1 ? "text-orange-500" : "text-green-500"}`}
+                  ref={ethToBaseRef}
+                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToBase) > 1 ? "text-orange-500" : "text-green-500"}`}
                 >
                   {priceDifferences.ethToBase.toFixed(2)}%
                 </span>
@@ -674,10 +799,9 @@ export function ArbitrageSummary() {
                 Max Price Difference
               </span>
             </div>
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 0.5 }}
-              className={`text-2xl font-bold ${
+            <div
+              ref={maxDifferenceRef}
+              className={`text-2xl font-bold tabular-nums ${
                 priceDifferences.maxDifference > 2
                   ? "text-red-500"
                   : priceDifferences.maxDifference > 1
@@ -686,7 +810,7 @@ export function ArbitrageSummary() {
               }`}
             >
               {priceDifferences.maxDifference.toFixed(3)}%
-            </motion.div>
+            </div>
           </div>
         </motion.div>
       )}
@@ -695,7 +819,7 @@ export function ArbitrageSummary() {
       <div className="text-center text-xs text-muted-foreground">
         <p>
           Chart shows prices calculated from sqrtPriceX96 values of the most
-          recent swaps across all networks. Data updates every 2 seconds.
+          recent swaps across all networks. Data updates every second.
         </p>
         <p className="mt-1">
           Price differences are calculated relative to Ethereum mainnet prices.
