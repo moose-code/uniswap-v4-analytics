@@ -1,4 +1,4 @@
-import { motion, animate } from "framer-motion";
+import { motion, animate, useMotionValue, useTransform } from "framer-motion";
 import { useArbitrage } from "@/hooks/useArbitrage";
 import {
   TrendingUp,
@@ -484,105 +484,90 @@ export function ArbitrageSummary() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Refs for counting animations - using stable references by chain name
-  const priceRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const percentageRefs = useRef<Record<string, HTMLSpanElement | null>>({});
-  const maxDifferenceRef = useRef<HTMLDivElement>(null);
+  // Motion values for smooth counting animations
+  const ethPriceValue = useMotionValue(0);
+  const unichainPriceValue = useMotionValue(0);
+  const arbitrumPriceValue = useMotionValue(0);
+  const basePriceValue = useMotionValue(0);
+  const ethToUnichainValue = useMotionValue(0);
+  const ethToArbitrumValue = useMotionValue(0);
+  const ethToBaseValue = useMotionValue(0);
+  const maxDifferenceValue = useMotionValue(0);
 
-  // Track previous values for animations
-  const previousValues = useRef<Record<string, number>>({
-    maxDifference: 0,
-  });
+  // Transform motion values to formatted strings
+  const ethPriceDisplay = useTransform(ethPriceValue, (v) => formatPrice(v));
+  const unichainPriceDisplay = useTransform(unichainPriceValue, (v) =>
+    formatPrice(v)
+  );
+  const arbitrumPriceDisplay = useTransform(arbitrumPriceValue, (v) =>
+    formatPrice(v)
+  );
+  const basePriceDisplay = useTransform(basePriceValue, (v) => formatPrice(v));
+  const ethToUnichainDisplay = useTransform(
+    ethToUnichainValue,
+    (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+  );
+  const ethToArbitrumDisplay = useTransform(
+    ethToArbitrumValue,
+    (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+  );
+  const ethToBaseDisplay = useTransform(
+    ethToBaseValue,
+    (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+  );
+  const maxDifferenceDisplay = useTransform(
+    maxDifferenceValue,
+    (v) => `${v.toFixed(3)}%`
+  );
 
-  // Animate price values when they change
+  // Animate motion values when prices change
   useEffect(() => {
     if (!priceDifferences) return;
 
-    const animateValue = (
-      element: HTMLElement | null,
-      start: number,
-      end: number,
-      format: (value: number) => string
-    ) => {
-      if (!element) return;
-      const controls = animate(start, end, {
-        duration: 0.8,
-        ease: [0.32, 0.72, 0, 1],
-        onUpdate(value) {
-          if (element) {
-            element.textContent = format(value);
-          }
-        },
-      });
-      return controls.stop;
-    };
-
-    const cleanups: Array<(() => void) | undefined> = [];
-
-    // Animate prices for each chain
-    const chains = [
-      { name: "Ethereum", price: priceDifferences.ethPrice },
-      { name: "Unichain", price: priceDifferences.unichainPrice },
-      { name: "Arbitrum", price: priceDifferences.arbitrumPrice },
-      { name: "Base", price: priceDifferences.basePrice },
-    ];
-
-    chains.forEach((chain) => {
-      const priceElement = priceRefs.current[chain.name];
-      const prevPrice =
-        previousValues.current[`${chain.name}_price`] || chain.price;
-
-      if (priceElement) {
-        cleanups.push(
-          animateValue(priceElement, prevPrice, chain.price, (v) =>
-            formatPrice(v)
-          )
-        );
-      }
-
-      previousValues.current[`${chain.name}_price`] = chain.price;
+    // Animate all values with smooth transitions
+    animate(ethPriceValue, priceDifferences.ethPrice, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
     });
-
-    // Animate percentages for non-Ethereum chains
-    const percentages = [
-      { name: "Unichain", value: priceDifferences.ethToUnichain },
-      { name: "Arbitrum", value: priceDifferences.ethToArbitrum },
-      { name: "Base", value: priceDifferences.ethToBase },
-    ];
-
-    percentages.forEach(({ name, value }) => {
-      const percentageElement = percentageRefs.current[name];
-      const prevValue = previousValues.current[`${name}_percentage`] || value;
-
-      if (percentageElement) {
-        cleanups.push(
-          animateValue(
-            percentageElement,
-            prevValue,
-            value,
-            (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
-          )
-        );
-      }
-
-      previousValues.current[`${name}_percentage`] = value;
+    animate(unichainPriceValue, priceDifferences.unichainPrice, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
     });
-
-    // Animate max difference
-    const prevMaxDiff =
-      previousValues.current.maxDifference || priceDifferences.maxDifference;
-    cleanups.push(
-      animateValue(
-        maxDifferenceRef.current,
-        prevMaxDiff,
-        priceDifferences.maxDifference,
-        (v) => `${v.toFixed(3)}%`
-      )
-    );
-    previousValues.current.maxDifference = priceDifferences.maxDifference;
-
-    return () => cleanups.forEach((cleanup) => cleanup?.());
-  }, [priceDifferences]);
+    animate(arbitrumPriceValue, priceDifferences.arbitrumPrice, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(basePriceValue, priceDifferences.basePrice, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(ethToUnichainValue, priceDifferences.ethToUnichain, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(ethToArbitrumValue, priceDifferences.ethToArbitrum, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(ethToBaseValue, priceDifferences.ethToBase, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(maxDifferenceValue, priceDifferences.maxDifference, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+  }, [
+    priceDifferences,
+    ethPriceValue,
+    unichainPriceValue,
+    arbitrumPriceValue,
+    basePriceValue,
+    ethToUnichainValue,
+    ethToArbitrumValue,
+    ethToBaseValue,
+    maxDifferenceValue,
+  ]);
 
   if (loading && !pools.length) {
     return (
@@ -693,11 +678,39 @@ export function ArbitrageSummary() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-lg border border-border/50 bg-gradient-to-r from-background to-secondary/10 p-4"
         >
-          <div className="flex items-start justify-between gap-6">
+          <div className="flex items-start justify-between gap-8">
             {/* Sorted Price List */}
-            <div className="flex-1">
+            <div className="flex-1 max-w-[70%]">
               <motion.div className="space-y-2" layout>
                 {(() => {
+                  // Helper function to get motion value for each chain
+                  const getMotionValue = (chainName: string) => {
+                    switch (chainName) {
+                      case "Ethereum":
+                        return {
+                          priceDisplay: ethPriceDisplay,
+                          percentageDisplay: null,
+                        };
+                      case "Unichain":
+                        return {
+                          priceDisplay: unichainPriceDisplay,
+                          percentageDisplay: ethToUnichainDisplay,
+                        };
+                      case "Arbitrum":
+                        return {
+                          priceDisplay: arbitrumPriceDisplay,
+                          percentageDisplay: ethToArbitrumDisplay,
+                        };
+                      case "Base":
+                        return {
+                          priceDisplay: basePriceDisplay,
+                          percentageDisplay: ethToBaseDisplay,
+                        };
+                      default:
+                        return { priceDisplay: null, percentageDisplay: null };
+                    }
+                  };
+
                   // Create array of chains with their data for sorting
                   const chains = [
                     {
@@ -740,47 +753,48 @@ export function ArbitrageSummary() {
                     return (
                       <motion.div
                         key={chain.name}
-                        layout
-                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                        layoutId={`chain-${chain.name}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{
+                          layout: { duration: 0.5, ease: "easeInOut" },
+                          opacity: { duration: 0.3 },
+                          scale: { duration: 0.3 },
+                        }}
                         className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/20 hover:bg-secondary/30 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className="text-sm font-medium min-w-[70px]">
                             {chain.name}
                           </div>
-                          <div
-                            ref={(el) => {
-                              priceRefs.current[chain.name] = el;
-                            }}
+                          <motion.div
+                            layoutId={`price-${chain.name}`}
                             className={`text-lg font-mono ${chain.color} tabular-nums`}
                           >
-                            {formatPrice(chain.price)}
-                          </div>
+                            {getMotionValue(chain.name).priceDisplay}
+                          </motion.div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <div className="text-xs text-muted-foreground">
                             TVL:{" "}
                             {chain.pool
                               ? formatUSD(chain.pool.totalValueLockedUSD)
                               : "N/A"}
                           </div>
-                          <div className="text-right min-w-[60px]">
+                          <div className="text-right min-w-[50px]">
                             {isEthereum ? (
                               <span className="text-sm font-semibold text-gray-500">
                                 0.00%
                               </span>
                             ) : (
-                              <span
-                                ref={(el) => {
-                                  percentageRefs.current[chain.name] = el;
-                                }}
+                              <motion.span
+                                layoutId={`percentage-${chain.name}`}
                                 className={`text-sm font-semibold tabular-nums ${
                                   isAboveEth ? "text-green-500" : "text-red-500"
                                 }`}
                               >
-                                {isAboveEth ? "+" : ""}
-                                {priceDiff.toFixed(2)}%
-                              </span>
+                                {getMotionValue(chain.name).percentageDisplay}
+                              </motion.span>
                             )}
                           </div>
                         </div>
@@ -792,18 +806,17 @@ export function ArbitrageSummary() {
             </div>
 
             {/* Max Price Difference */}
-            <div className="text-center">
-              <div className="flex items-center gap-2 mb-2">
+            <div className="text-center min-w-[30%] flex flex-col justify-center">
+              <div className="flex items-center justify-center gap-2 mb-3">
                 {priceDifferences.maxDifference > 1 ? (
-                  <TrendingUp className="w-4 h-4 text-orange-500" />
+                  <TrendingUp className="w-5 h-5 text-orange-500" />
                 ) : (
-                  <TrendingDown className="w-4 h-4 text-green-500" />
+                  <TrendingDown className="w-5 h-5 text-green-500" />
                 )}
-                <span className="text-sm font-semibold">Max Spread</span>
+                <span className="text-base font-semibold">Max Spread</span>
               </div>
-              <div
-                ref={maxDifferenceRef}
-                className={`text-2xl font-bold tabular-nums ${
+              <motion.div
+                className={`text-3xl font-bold tabular-nums ${
                   priceDifferences.maxDifference > 2
                     ? "text-red-500"
                     : priceDifferences.maxDifference > 1
@@ -811,7 +824,10 @@ export function ArbitrageSummary() {
                       : "text-green-500"
                 }`}
               >
-                {priceDifferences.maxDifference.toFixed(3)}%
+                {maxDifferenceDisplay}
+              </motion.div>
+              <div className="text-xs text-muted-foreground mt-2">
+                Arbitrage Opportunity
               </div>
             </div>
           </div>
