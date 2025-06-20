@@ -6,6 +6,8 @@ import {
   Activity,
   ExternalLink,
   Clock,
+  Maximize2,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -116,6 +118,31 @@ const PriceChart = ({
 
   const scaleY = (price: number) =>
     padding + ((maxPrice - price) / (maxPrice - minPrice)) * chartHeight;
+
+  // Scale bubble size based on swap amount for smart visualization
+  const scaleBubbleSize = (amountUSD: number): number => {
+    // Get all amounts to determine range
+    const allAmounts = [
+      ...ethData.map((d) => d.amountUSD),
+      ...unichainData.map((d) => d.amountUSD),
+      ...arbitrumData.map((d) => d.amountUSD),
+      ...baseData.map((d) => d.amountUSD),
+    ].filter((amount) => amount > 0);
+
+    if (allAmounts.length === 0) return 3;
+
+    const minAmount = Math.min(...allAmounts);
+    const maxAmount = Math.max(...allAmounts);
+
+    // Scale between 2 and 10 pixels radius for better visibility
+    const minRadius = 2;
+    const maxRadius = 10;
+
+    if (maxAmount === minAmount) return (minRadius + maxRadius) / 2;
+
+    const scale = (amountUSD - minAmount) / (maxAmount - minAmount);
+    return minRadius + scale * (maxRadius - minRadius);
+  };
 
   // Create path strings
   const createPath = (data: ChartData[]) => {
@@ -297,16 +324,21 @@ const PriceChart = ({
           />
         )}
 
-        {/* Data points */}
+        {/* Data points - bubble size based on swap amount */}
         {ethData.map((point, index) => (
           <circle
             key={`eth-${index}`}
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
-            r="3"
+            r={scaleBubbleSize(point.amountUSD)}
             fill="#3b82f6"
             opacity="0.7"
-          />
+            stroke="#3b82f6"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Ethereum: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
         ))}
 
         {unichainData.map((point, index) => (
@@ -314,10 +346,15 @@ const PriceChart = ({
             key={`unichain-${index}`}
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
-            r="3"
+            r={scaleBubbleSize(point.amountUSD)}
             fill="#ef4444"
             opacity="0.7"
-          />
+            stroke="#ef4444"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Unichain: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
         ))}
 
         {arbitrumData.map((point, index) => (
@@ -325,10 +362,15 @@ const PriceChart = ({
             key={`arbitrum-${index}`}
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
-            r="3"
+            r={scaleBubbleSize(point.amountUSD)}
             fill="#f59e0b"
             opacity="0.7"
-          />
+            stroke="#f59e0b"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Arbitrum: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
         ))}
 
         {baseData.map((point, index) => (
@@ -336,66 +378,84 @@ const PriceChart = ({
             key={`base-${index}`}
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
-            r="3"
+            r={scaleBubbleSize(point.amountUSD)}
             fill="#10b981"
             opacity="0.7"
-          />
+            stroke="#10b981"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Base: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
         ))}
 
-        {/* Legend */}
-        <g transform={`translate(${padding + 20}, ${padding + 20})`}>
-          <rect width="140" height="90" fill="rgba(0,0,0,0.1)" rx="4" />
+        {/* Legend - positioned at bottom to avoid covering data */}
+        <g transform={`translate(${padding + 20}, ${height - 40})`}>
+          <rect width="520" height="25" fill="rgba(0,0,0,0.1)" rx="4" />
+
+          {/* Ethereum */}
           <line
             x1="10"
             y1="15"
-            x2="30"
+            x2="25"
             y2="15"
             stroke="#3b82f6"
             strokeWidth="2"
           />
-          <circle cx="20" cy="15" r="3" fill="#3b82f6" />
-          <text x="35" y="18" fontSize="12" fill="currentColor">
+          <circle cx="17.5" cy="15" r="3" fill="#3b82f6" />
+          <text x="30" y="18" fontSize="11" fill="currentColor">
             Ethereum
           </text>
 
+          {/* Unichain */}
           <line
-            x1="10"
-            y1="35"
-            x2="30"
-            y2="35"
+            x1="100"
+            y1="15"
+            x2="115"
+            y2="15"
             stroke="#ef4444"
             strokeWidth="2"
           />
-          <circle cx="20" cy="35" r="3" fill="#ef4444" />
-          <text x="35" y="38" fontSize="12" fill="currentColor">
+          <circle cx="107.5" cy="15" r="3" fill="#ef4444" />
+          <text x="120" y="18" fontSize="11" fill="currentColor">
             Unichain
           </text>
 
+          {/* Arbitrum */}
           <line
-            x1="10"
-            y1="55"
-            x2="30"
-            y2="55"
+            x1="190"
+            y1="15"
+            x2="205"
+            y2="15"
             stroke="#f59e0b"
             strokeWidth="2"
           />
-          <circle cx="20" cy="55" r="3" fill="#f59e0b" />
-          <text x="35" y="58" fontSize="12" fill="currentColor">
+          <circle cx="197.5" cy="15" r="3" fill="#f59e0b" />
+          <text x="210" y="18" fontSize="11" fill="currentColor">
             Arbitrum
           </text>
 
+          {/* Base */}
           <line
-            x1="10"
-            y1="75"
-            x2="30"
-            y2="75"
+            x1="280"
+            y1="15"
+            x2="295"
+            y2="15"
             stroke="#10b981"
             strokeWidth="2"
           />
-          <circle cx="20" cy="75" r="3" fill="#10b981" />
-          <text x="35" y="78" fontSize="12" fill="currentColor">
+          <circle cx="287.5" cy="15" r="3" fill="#10b981" />
+          <text x="300" y="18" fontSize="11" fill="currentColor">
             Base
           </text>
+
+          {/* Bubble size explanation */}
+          <text x="350" y="12" fontSize="10" fill="currentColor" opacity="0.7">
+            Bubble size = Swap volume
+          </text>
+          <circle cx="360" cy="20" r="2" fill="currentColor" opacity="0.5" />
+          <circle cx="370" cy="20" r="4" fill="currentColor" opacity="0.5" />
+          <circle cx="385" cy="20" r="6" fill="currentColor" opacity="0.5" />
         </g>
       </svg>
     </div>
@@ -418,6 +478,8 @@ export function ArbitrageSummary() {
     arbitrumChartData,
     baseChartData,
   } = useArbitrage();
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   if (loading && !pools.length) {
     return (
@@ -572,7 +634,7 @@ export function ArbitrageSummary() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border border-border/50 overflow-hidden"
+          className="rounded-lg border border-border/50 overflow-hidden relative"
         >
           <div className="bg-secondary/30 px-6 py-4 border-b border-border/50">
             <div className="flex items-center justify-between">
@@ -605,7 +667,7 @@ export function ArbitrageSummary() {
               </div>
             </div>
           </div>
-          <div className="p-4">
+          <div className="p-4 relative">
             <PriceChart
               ethData={ethChartData || []}
               unichainData={unichainChartData || []}
@@ -614,128 +676,17 @@ export function ArbitrageSummary() {
               width={700}
               height={350}
             />
+            {/* Fullscreen button */}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="absolute bottom-4 right-4 p-2 bg-background/80 hover:bg-background border border-border rounded-lg shadow-sm transition-colors group"
+              title="Expand chart to fullscreen"
+            >
+              <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+            </button>
           </div>
         </motion.div>
       )}
-
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-lg border border-border/50 p-4">
-          <h4 className="font-semibold mb-3 text-blue-500">Ethereum Pool</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recent Swaps:</span>
-              <span>{ethChartData?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Avg Price:</span>
-              <span className="font-mono text-xs">
-                {ethChartData?.length > 0
-                  ? formatPrice(
-                      ethChartData.reduce((sum, d) => sum + d.price, 0) /
-                        ethChartData.length
-                    )
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Price Range:</span>
-              <span className="font-mono text-xs">
-                {ethChartData?.length > 0
-                  ? `${formatPrice(Math.min(...ethChartData.map((d) => d.price)))} - ${formatPrice(Math.max(...ethChartData.map((d) => d.price)))}`
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border/50 p-4">
-          <h4 className="font-semibold mb-3 text-red-500">Unichain Pool</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recent Swaps:</span>
-              <span>{unichainChartData?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Avg Price:</span>
-              <span className="font-mono text-xs">
-                {unichainChartData?.length > 0
-                  ? formatPrice(
-                      unichainChartData.reduce((sum, d) => sum + d.price, 0) /
-                        unichainChartData.length
-                    )
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Price Range:</span>
-              <span className="font-mono text-xs">
-                {unichainChartData?.length > 0
-                  ? `${formatPrice(Math.min(...unichainChartData.map((d) => d.price)))} - ${formatPrice(Math.max(...unichainChartData.map((d) => d.price)))}`
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border/50 p-4">
-          <h4 className="font-semibold mb-3 text-amber-500">Arbitrum Pool</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recent Swaps:</span>
-              <span>{arbitrumChartData?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Avg Price:</span>
-              <span className="font-mono text-xs">
-                {arbitrumChartData?.length > 0
-                  ? formatPrice(
-                      arbitrumChartData.reduce((sum, d) => sum + d.price, 0) /
-                        arbitrumChartData.length
-                    )
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Price Range:</span>
-              <span className="font-mono text-xs">
-                {arbitrumChartData?.length > 0
-                  ? `${formatPrice(Math.min(...arbitrumChartData.map((d) => d.price)))} - ${formatPrice(Math.max(...arbitrumChartData.map((d) => d.price)))}`
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border/50 p-4">
-          <h4 className="font-semibold mb-3 text-emerald-500">Base Pool</h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Recent Swaps:</span>
-              <span>{baseChartData?.length || 0}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Avg Price:</span>
-              <span className="font-mono text-xs">
-                {baseChartData?.length > 0
-                  ? formatPrice(
-                      baseChartData.reduce((sum, d) => sum + d.price, 0) /
-                        baseChartData.length
-                    )
-                  : "N/A"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Price Range:</span>
-              <span className="font-mono text-xs">
-                {baseChartData?.length > 0
-                  ? `${formatPrice(Math.min(...baseChartData.map((d) => d.price)))} - ${formatPrice(Math.max(...baseChartData.map((d) => d.price)))}`
-                  : "N/A"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Footer */}
       <div className="text-center text-xs text-muted-foreground">
@@ -747,6 +698,85 @@ export function ArbitrageSummary() {
           Price differences are calculated relative to Ethereum mainnet prices.
         </p>
       </div>
+
+      {/* Fullscreen Modal */}
+      {isFullscreen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsFullscreen(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-background rounded-lg shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Fullscreen Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Multi-Chain ETH/USDC Price Arbitrage
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Expanded view - Bubble size indicates swap volume
+                </p>
+              </div>
+              <div className="flex items-center gap-6">
+                {/* Legend */}
+                <div className="flex items-center gap-4 text-sm">
+                  {ethChartData && ethChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span>Ethereum</span>
+                    </div>
+                  )}
+                  {unichainChartData && unichainChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span>Unichain</span>
+                    </div>
+                  )}
+                  {arbitrumChartData && arbitrumChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                      <span>Arbitrum</span>
+                    </div>
+                  )}
+                  {baseChartData && baseChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                      <span>Base</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsFullscreen(false)}
+                  className="p-2 hover:bg-secondary rounded-lg transition-colors"
+                  title="Close fullscreen"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Fullscreen Chart */}
+            <div className="flex-1 p-6">
+              <PriceChart
+                ethData={ethChartData || []}
+                unichainData={unichainChartData || []}
+                arbitrumData={arbitrumChartData || []}
+                baseData={baseChartData || []}
+                width={1200}
+                height={600}
+              />
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
