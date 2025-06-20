@@ -605,7 +605,7 @@ export function ArbitrageSummary() {
         </h2>
         <p className="text-muted-foreground text-sm">
           Real-time price comparison across Ethereum, Unichain, Arbitrum, and
-          Base networks
+          Base networks for ETH/USDC pools
         </p>
       </div>
 
@@ -827,7 +827,9 @@ export function ArbitrageSummary() {
                 {maxDifferenceDisplay}
               </motion.div>
               <div className="text-xs text-muted-foreground mt-2">
-                Arbitrage Opportunity
+                {priceDifferences.maxDifference > 0.1
+                  ? "Arbitrage Opportunity"
+                  : "Below Fee Threshold (0.1%)"}
               </div>
             </div>
           </div>
