@@ -55,7 +55,9 @@ interface SwapsResponse {
 // The specific pool IDs we want to track for arbitrage
 const ARBITRAGE_POOL_IDS = [
   "1_0x21c67e77068de97969ba93d4aab21826d33ca12bb9f565d8496e8fda8a82ca27", // Ethereum ETH/USDC
-  "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9", // Unichain
+  "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9", // Unichain ETH/USDC
+  "42161_0x864abca0a6202dba5b8868772308da953ff125b0f95015adbf89aaf579e903a8", // Arbitrum ETH/USDC
+  "8453_0x96d4b53a38337a5733179751781178a2613306063c511b78cd02684739288c0a", // Base ETH/USDC
 ];
 
 // Helper function to calculate price from sqrtPriceX96
@@ -142,52 +144,61 @@ export function useArbitrage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate price difference between the two pools
-  const priceData =
-    pools.length === 2
-      ? {
-          ethPool: pools.find((p) => p.chainId === "1"),
-          unichainPool: pools.find((p) => p.chainId === "130"),
-        }
-      : null;
+  // Get pools by chain
+  const ethPool = pools.find((p) => p.chainId === "1");
+  const unichainPool = pools.find((p) => p.chainId === "130");
+  const arbitrumPool = pools.find((p) => p.chainId === "42161");
+  const basePool = pools.find((p) => p.chainId === "8453");
 
-  // Process swaps into chart data
+  // Process swaps into chart data for all chains
   const ethChartData = processSwapsForChart(swaps, "1", 50);
   const unichainChartData = processSwapsForChart(swaps, "130", 50);
+  const arbitrumChartData = processSwapsForChart(swaps, "42161", 50);
+  const baseChartData = processSwapsForChart(swaps, "8453", 50);
 
-  // Get current prices from most recent swaps
-  const currentPrices = (() => {
-    if (ethChartData.length === 0 || unichainChartData.length === 0) {
-      return null;
-    }
+  // Get current prices from most recent swaps for all chains
+  const getCurrentPrice = (chartData: any[]) => {
+    if (chartData.length === 0) return 0;
+    return chartData[chartData.length - 1]?.price || 0;
+  };
 
-    const ethPrice = ethChartData[ethChartData.length - 1]?.price || 0;
-    const unichainPrice =
-      unichainChartData[unichainChartData.length - 1]?.price || 0;
+  const ethPrice = getCurrentPrice(ethChartData);
+  const unichainPrice = getCurrentPrice(unichainChartData);
+  const arbitrumPrice = getCurrentPrice(arbitrumChartData);
+  const basePrice = getCurrentPrice(baseChartData);
 
-    if (ethPrice === 0 || unichainPrice === 0) {
-      return null;
-    }
-
-    const difference = ((ethPrice - unichainPrice) / unichainPrice) * 100;
-
-    return {
-      ethPrice,
-      unichainPrice,
-      difference,
-      absoluteDifference: Math.abs(difference),
-    };
-  })();
+  // Calculate price differences (using ETH as base for comparison)
+  const priceDifferences =
+    ethPrice > 0
+      ? {
+          ethPrice,
+          unichainPrice,
+          arbitrumPrice,
+          basePrice,
+          ethToUnichain: ((ethPrice - unichainPrice) / ethPrice) * 100,
+          ethToArbitrum: ((ethPrice - arbitrumPrice) / ethPrice) * 100,
+          ethToBase: ((ethPrice - basePrice) / ethPrice) * 100,
+          maxDifference: Math.max(
+            Math.abs(((ethPrice - unichainPrice) / ethPrice) * 100),
+            Math.abs(((ethPrice - arbitrumPrice) / ethPrice) * 100),
+            Math.abs(((ethPrice - basePrice) / ethPrice) * 100)
+          ),
+        }
+      : null;
 
   return {
     pools,
     swaps,
     loading,
     error,
-    priceDifference: currentPrices,
-    ethPool: priceData?.ethPool,
-    unichainPool: priceData?.unichainPool,
+    priceDifferences,
+    ethPool,
+    unichainPool,
+    arbitrumPool,
+    basePool,
     ethChartData,
     unichainChartData,
+    arbitrumChartData,
+    baseChartData,
   };
 }
