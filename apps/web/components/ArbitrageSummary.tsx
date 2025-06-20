@@ -88,9 +88,11 @@ const PriceChart = ({
   width = 800,
   height = 400,
 }: PriceChartProps) => {
-  const padding = 80;
-  const chartWidth = width - 2 * padding;
-  const chartHeight = height - 2 * padding;
+  const horizontalPadding = 80; // Keep space for Y-axis labels
+  const topPadding = 20; // Minimal top whitespace
+  const bottomPadding = 80; // Space for X-axis labels and legend
+  const chartWidth = width - 2 * horizontalPadding;
+  const chartHeight = height - topPadding - bottomPadding;
 
   // Combine all data to find min/max values
   const allData = [...ethData, ...unichainData, ...arbitrumData, ...baseData];
@@ -114,10 +116,11 @@ const PriceChart = ({
 
   // Scale functions
   const scaleX = (timestamp: number) =>
-    padding + ((timestamp - minTime) / (maxTime - minTime)) * chartWidth;
+    horizontalPadding +
+    ((timestamp - minTime) / (maxTime - minTime)) * chartWidth;
 
   const scaleY = (price: number) =>
-    padding + ((maxPrice - price) / (maxPrice - minPrice)) * chartHeight;
+    topPadding + ((maxPrice - price) / (maxPrice - minPrice)) * chartHeight;
 
   // Scale bubble size based on swap amount for smart visualization
   const scaleBubbleSize = (amountUSD: number): number => {
@@ -204,17 +207,17 @@ const PriceChart = ({
         <rect
           width={chartWidth}
           height={chartHeight}
-          x={padding}
-          y={padding}
+          x={horizontalPadding}
+          y={topPadding}
           fill="url(#grid)"
         />
 
         {/* Y-axis */}
         <line
-          x1={padding}
-          y1={padding}
-          x2={padding}
-          y2={height - padding}
+          x1={horizontalPadding}
+          y1={topPadding}
+          x2={horizontalPadding}
+          y2={height - bottomPadding}
           stroke="currentColor"
           strokeWidth="1"
           opacity="0.3"
@@ -222,10 +225,10 @@ const PriceChart = ({
 
         {/* X-axis */}
         <line
-          x1={padding}
-          y1={height - padding}
-          x2={width - padding}
-          y2={height - padding}
+          x1={horizontalPadding}
+          y1={height - bottomPadding}
+          x2={width - horizontalPadding}
+          y2={height - bottomPadding}
           stroke="currentColor"
           strokeWidth="1"
           opacity="0.3"
@@ -235,16 +238,16 @@ const PriceChart = ({
         {yTicks.map((price, index) => (
           <g key={index}>
             <line
-              x1={padding - 5}
+              x1={horizontalPadding - 5}
               y1={scaleY(price)}
-              x2={padding}
+              x2={horizontalPadding}
               y2={scaleY(price)}
               stroke="currentColor"
               strokeWidth="1"
               opacity="0.3"
             />
             <text
-              x={padding - 10}
+              x={horizontalPadding - 10}
               y={scaleY(price)}
               textAnchor="end"
               dominantBaseline="middle"
@@ -262,16 +265,16 @@ const PriceChart = ({
           <g key={index}>
             <line
               x1={scaleX(timestamp)}
-              y1={height - padding}
+              y1={height - bottomPadding}
               x2={scaleX(timestamp)}
-              y2={height - padding + 5}
+              y2={height - bottomPadding + 5}
               stroke="currentColor"
               strokeWidth="1"
               opacity="0.3"
             />
             <text
               x={scaleX(timestamp)}
-              y={height - padding + 15}
+              y={height - bottomPadding + 15}
               textAnchor="middle"
               dominantBaseline="middle"
               fontSize="10"
@@ -390,7 +393,7 @@ const PriceChart = ({
         ))}
 
         {/* Legend - positioned at bottom to avoid covering data */}
-        <g transform={`translate(${padding + 20}, ${height - 40})`}>
+        <g transform={`translate(${horizontalPadding + 20}, ${height - 40})`}>
           <rect width="520" height="25" fill="rgba(0,0,0,0.1)" rx="4" />
 
           {/* Ethereum */}
@@ -619,9 +622,9 @@ export function ArbitrageSummary() {
   const unichainSwaps = swaps.filter((swap) => swap.chainId === "130");
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-1">
         <h2 className="text-2xl font-bold">
           Multi-Chain ETH/USDC Price Arbitrage
         </h2>
@@ -814,17 +817,6 @@ export function ArbitrageSummary() {
           </div>
         </motion.div>
       )}
-
-      {/* Footer */}
-      <div className="text-center text-xs text-muted-foreground">
-        <p>
-          Chart shows prices calculated from sqrtPriceX96 values of the most
-          recent swaps across all networks. Data updates every second.
-        </p>
-        <p className="mt-1">
-          Price differences are calculated relative to Ethereum mainnet prices.
-        </p>
-      </div>
 
       {/* Fullscreen Modal */}
       {isFullscreen && (
