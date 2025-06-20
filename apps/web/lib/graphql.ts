@@ -222,3 +222,87 @@ export const LARGEST_REMOVE_LIQUIDITY_QUERY = `
     }
   }
 `;
+
+export const SPECIFIC_POOLS_QUERY = `
+  query specificPools($poolIds: [String!]!) {
+    Pool(where: {id: {_in: $poolIds}}) {
+      chainId
+      hooks
+      id
+      name
+      txCount
+      token0
+      token1
+      volumeUSD
+      untrackedVolumeUSD
+      feesUSD
+      feesUSDUntracked
+      totalValueLockedUSD
+    }
+  }
+`;
+
+export const RECENT_SWAPS_MULTIPLE_POOLS_QUERY = `
+  query recentSwapsMultiplePools($poolIds: [String!]!, $limit: Int!) {
+    Swap(
+      where: {pool: {_in: $poolIds}}, 
+      order_by: {timestamp: desc}, 
+      limit: $limit
+    ) {
+      id
+      amount0
+      amount1
+      amountUSD
+      origin
+      sender
+      timestamp
+      transaction
+      pool
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
+      sqrtPriceX96
+      tick
+      chainId
+    }
+  }
+`;
+
+export const ARBITRAGE_SWAPS_QUERY = `
+  query arbitrageSwaps($poolIds: [String!]!) {
+    Swap(
+      where: {pool: {_in: $poolIds}}, 
+      order_by: {timestamp: desc}, 
+      limit: 100
+    ) {
+      id
+      timestamp
+      pool
+      token0 {
+        id
+        name
+        symbol
+        decimals
+      }
+      token1 {
+        id
+        name
+        symbol
+        decimals
+      }
+      sqrtPriceX96
+      tick
+      chainId
+      amountUSD
+    }
+  }
+`;
