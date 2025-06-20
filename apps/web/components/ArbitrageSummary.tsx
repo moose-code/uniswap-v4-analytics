@@ -288,7 +288,7 @@ const PriceChart = ({
           <path
             d={ethPath}
             fill="none"
-            stroke="#3b82f6"
+            stroke="#6b7280"
             strokeWidth="2"
             opacity="0.8"
           />
@@ -298,7 +298,7 @@ const PriceChart = ({
           <path
             d={unichainPath}
             fill="none"
-            stroke="#ef4444"
+            stroke="#ec4899"
             strokeWidth="2"
             opacity="0.8"
           />
@@ -308,7 +308,7 @@ const PriceChart = ({
           <path
             d={arbitrumPath}
             fill="none"
-            stroke="#f59e0b"
+            stroke="#f97316"
             strokeWidth="2"
             opacity="0.8"
           />
@@ -318,7 +318,7 @@ const PriceChart = ({
           <path
             d={basePath}
             fill="none"
-            stroke="#10b981"
+            stroke="#3b82f6"
             strokeWidth="2"
             opacity="0.8"
           />
@@ -331,9 +331,9 @@ const PriceChart = ({
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
             r={scaleBubbleSize(point.amountUSD)}
-            fill="#3b82f6"
+            fill="#6b7280"
             opacity="0.7"
-            stroke="#3b82f6"
+            stroke="#6b7280"
             strokeWidth="1"
             strokeOpacity="0.9"
           >
@@ -347,9 +347,9 @@ const PriceChart = ({
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
             r={scaleBubbleSize(point.amountUSD)}
-            fill="#ef4444"
+            fill="#ec4899"
             opacity="0.7"
-            stroke="#ef4444"
+            stroke="#ec4899"
             strokeWidth="1"
             strokeOpacity="0.9"
           >
@@ -363,9 +363,9 @@ const PriceChart = ({
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
             r={scaleBubbleSize(point.amountUSD)}
-            fill="#f59e0b"
+            fill="#f97316"
             opacity="0.7"
-            stroke="#f59e0b"
+            stroke="#f97316"
             strokeWidth="1"
             strokeOpacity="0.9"
           >
@@ -379,9 +379,9 @@ const PriceChart = ({
             cx={scaleX(point.timestamp)}
             cy={scaleY(point.price)}
             r={scaleBubbleSize(point.amountUSD)}
-            fill="#10b981"
+            fill="#3b82f6"
             opacity="0.7"
-            stroke="#10b981"
+            stroke="#3b82f6"
             strokeWidth="1"
             strokeOpacity="0.9"
           >
@@ -399,10 +399,10 @@ const PriceChart = ({
             y1="15"
             x2="25"
             y2="15"
-            stroke="#3b82f6"
+            stroke="#6b7280"
             strokeWidth="2"
           />
-          <circle cx="17.5" cy="15" r="3" fill="#3b82f6" />
+          <circle cx="17.5" cy="15" r="3" fill="#6b7280" />
           <text x="30" y="18" fontSize="11" fill="currentColor">
             Ethereum
           </text>
@@ -413,10 +413,10 @@ const PriceChart = ({
             y1="15"
             x2="115"
             y2="15"
-            stroke="#ef4444"
+            stroke="#ec4899"
             strokeWidth="2"
           />
-          <circle cx="107.5" cy="15" r="3" fill="#ef4444" />
+          <circle cx="107.5" cy="15" r="3" fill="#ec4899" />
           <text x="120" y="18" fontSize="11" fill="currentColor">
             Unichain
           </text>
@@ -427,10 +427,10 @@ const PriceChart = ({
             y1="15"
             x2="205"
             y2="15"
-            stroke="#f59e0b"
+            stroke="#f97316"
             strokeWidth="2"
           />
-          <circle cx="197.5" cy="15" r="3" fill="#f59e0b" />
+          <circle cx="197.5" cy="15" r="3" fill="#f97316" />
           <text x="210" y="18" fontSize="11" fill="currentColor">
             Arbitrum
           </text>
@@ -441,10 +441,10 @@ const PriceChart = ({
             y1="15"
             x2="295"
             y2="15"
-            stroke="#10b981"
+            stroke="#3b82f6"
             strokeWidth="2"
           />
-          <circle cx="287.5" cy="15" r="3" fill="#10b981" />
+          <circle cx="287.5" cy="15" r="3" fill="#3b82f6" />
           <text x="300" y="18" fontSize="11" fill="currentColor">
             Base
           </text>
@@ -521,6 +521,68 @@ export function ArbitrageSummary() {
         </p>
       </div>
 
+      {/* Price Chart */}
+      {(ethChartData ||
+        unichainChartData ||
+        arbitrumChartData ||
+        baseChartData) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-border/50 overflow-hidden relative"
+        >
+          <div className="bg-secondary/30 px-6 py-4 border-b border-border/50">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Real-Time Price Comparison</h3>
+              <div className="flex items-center gap-4 text-sm flex-wrap">
+                {ethChartData && ethChartData.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                    <span>Ethereum</span>
+                  </div>
+                )}
+                {unichainChartData && unichainChartData.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
+                    <span>Unichain</span>
+                  </div>
+                )}
+                {arbitrumChartData && arbitrumChartData.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span>Arbitrum</span>
+                  </div>
+                )}
+                {baseChartData && baseChartData.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                    <span>Base</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="p-4 relative">
+            <PriceChart
+              ethData={ethChartData || []}
+              unichainData={unichainChartData || []}
+              arbitrumData={arbitrumChartData || []}
+              baseData={baseChartData || []}
+              width={700}
+              height={500}
+            />
+            {/* Fullscreen button */}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="absolute bottom-4 right-4 p-2 bg-background/80 hover:bg-background border border-border rounded-lg shadow-sm transition-colors group"
+              title="Expand chart to fullscreen"
+            >
+              <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Current Price Comparison */}
       {priceDifferences && (
         <motion.div
@@ -531,17 +593,20 @@ export function ArbitrageSummary() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Ethereum</div>
-              <div className="text-xl font-mono text-blue-500">
+              <div className="text-xl font-mono text-gray-500">
                 {formatPrice(priceDifferences.ethPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
                 TVL: {ethPool ? formatUSD(ethPool.totalValueLockedUSD) : "N/A"}
               </div>
+              <div className="text-xs text-center mt-1">
+                <span className="font-semibold text-gray-500">0.00%</span>
+              </div>
             </div>
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Unichain</div>
-              <div className="text-xl font-mono text-red-500">
+              <div className="text-xl font-mono text-pink-500">
                 {formatPrice(priceDifferences.unichainPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -561,7 +626,7 @@ export function ArbitrageSummary() {
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Arbitrum</div>
-              <div className="text-xl font-mono text-amber-500">
+              <div className="text-xl font-mono text-orange-500">
                 {formatPrice(priceDifferences.arbitrumPrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -581,7 +646,7 @@ export function ArbitrageSummary() {
 
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-1">Base</div>
-              <div className="text-xl font-mono text-emerald-500">
+              <div className="text-xl font-mono text-blue-500">
                 {formatPrice(priceDifferences.basePrice)}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -622,68 +687,6 @@ export function ArbitrageSummary() {
             >
               {priceDifferences.maxDifference.toFixed(3)}%
             </motion.div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Price Chart */}
-      {(ethChartData ||
-        unichainChartData ||
-        arbitrumChartData ||
-        baseChartData) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border border-border/50 overflow-hidden relative"
-        >
-          <div className="bg-secondary/30 px-6 py-4 border-b border-border/50">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Price History Comparison</h3>
-              <div className="flex items-center gap-4 text-sm flex-wrap">
-                {ethChartData && ethChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                    <span>Ethereum</span>
-                  </div>
-                )}
-                {unichainChartData && unichainChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    <span>Unichain</span>
-                  </div>
-                )}
-                {arbitrumChartData && arbitrumChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500"></div>
-                    <span>Arbitrum</span>
-                  </div>
-                )}
-                {baseChartData && baseChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                    <span>Base</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="p-4 relative">
-            <PriceChart
-              ethData={ethChartData || []}
-              unichainData={unichainChartData || []}
-              arbitrumData={arbitrumChartData || []}
-              baseData={baseChartData || []}
-              width={700}
-              height={350}
-            />
-            {/* Fullscreen button */}
-            <button
-              onClick={() => setIsFullscreen(true)}
-              className="absolute bottom-4 right-4 p-2 bg-background/80 hover:bg-background border border-border rounded-lg shadow-sm transition-colors group"
-              title="Expand chart to fullscreen"
-            >
-              <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            </button>
           </div>
         </motion.div>
       )}
@@ -730,25 +733,25 @@ export function ArbitrageSummary() {
                 <div className="flex items-center gap-4 text-sm">
                   {ethChartData && ethChartData.length > 0 && (
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-gray-500"></div>
                       <span>Ethereum</span>
                     </div>
                   )}
                   {unichainChartData && unichainChartData.length > 0 && (
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-pink-500"></div>
                       <span>Unichain</span>
                     </div>
                   )}
                   {arbitrumChartData && arbitrumChartData.length > 0 && (
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                       <span>Arbitrum</span>
                     </div>
                   )}
                   {baseChartData && baseChartData.length > 0 && (
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                       <span>Base</span>
                     </div>
                   )}
@@ -771,7 +774,7 @@ export function ArbitrageSummary() {
                 arbitrumData={arbitrumChartData || []}
                 baseData={baseChartData || []}
                 width={1200}
-                height={600}
+                height={900}
               />
             </div>
           </motion.div>
