@@ -484,25 +484,13 @@ export function ArbitrageSummary() {
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Refs for counting animations
-  const ethPriceRef = useRef<HTMLDivElement>(null);
-  const unichainPriceRef = useRef<HTMLDivElement>(null);
-  const arbitrumPriceRef = useRef<HTMLDivElement>(null);
-  const basePriceRef = useRef<HTMLDivElement>(null);
-  const ethToUnichainRef = useRef<HTMLSpanElement>(null);
-  const ethToArbitrumRef = useRef<HTMLSpanElement>(null);
-  const ethToBaseRef = useRef<HTMLSpanElement>(null);
+  // Refs for counting animations - using stable references by chain name
+  const priceRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const percentageRefs = useRef<Record<string, HTMLSpanElement | null>>({});
   const maxDifferenceRef = useRef<HTMLDivElement>(null);
 
   // Track previous values for animations
-  const previousValues = useRef({
-    ethPrice: 0,
-    unichainPrice: 0,
-    arbitrumPrice: 0,
-    basePrice: 0,
-    ethToUnichain: 0,
-    ethToArbitrum: 0,
-    ethToBase: 0,
+  const previousValues = useRef<Record<string, number>>({
     maxDifference: 0,
   });
 
@@ -511,85 +499,87 @@ export function ArbitrageSummary() {
     if (!priceDifferences) return;
 
     const animateValue = (
-      ref: React.RefObject<HTMLElement>,
+      element: HTMLElement | null,
       start: number,
       end: number,
       format: (value: number) => string
     ) => {
-      if (!ref.current) return;
+      if (!element) return;
       const controls = animate(start, end, {
         duration: 0.8,
         ease: [0.32, 0.72, 0, 1],
         onUpdate(value) {
-          if (ref.current) {
-            ref.current.textContent = format(value);
+          if (element) {
+            element.textContent = format(value);
           }
         },
       });
       return controls.stop;
     };
 
-    const cleanups = [
-      animateValue(
-        ethPriceRef,
-        previousValues.current.ethPrice,
-        priceDifferences.ethPrice,
-        (v) => formatPrice(v)
-      ),
-      animateValue(
-        unichainPriceRef,
-        previousValues.current.unichainPrice,
-        priceDifferences.unichainPrice,
-        (v) => formatPrice(v)
-      ),
-      animateValue(
-        arbitrumPriceRef,
-        previousValues.current.arbitrumPrice,
-        priceDifferences.arbitrumPrice,
-        (v) => formatPrice(v)
-      ),
-      animateValue(
-        basePriceRef,
-        previousValues.current.basePrice,
-        priceDifferences.basePrice,
-        (v) => formatPrice(v)
-      ),
-      animateValue(
-        ethToUnichainRef,
-        previousValues.current.ethToUnichain,
-        priceDifferences.ethToUnichain,
-        (v) => `${v.toFixed(2)}%`
-      ),
-      animateValue(
-        ethToArbitrumRef,
-        previousValues.current.ethToArbitrum,
-        priceDifferences.ethToArbitrum,
-        (v) => `${v.toFixed(2)}%`
-      ),
-      animateValue(
-        ethToBaseRef,
-        previousValues.current.ethToBase,
-        priceDifferences.ethToBase,
-        (v) => `${v.toFixed(2)}%`
-      ),
-      animateValue(
-        maxDifferenceRef,
-        previousValues.current.maxDifference,
-        priceDifferences.maxDifference,
-        (v) => `${v.toFixed(3)}%`
-      ),
+    const cleanups: Array<(() => void) | undefined> = [];
+
+    // Animate prices for each chain
+    const chains = [
+      { name: "Ethereum", price: priceDifferences.ethPrice },
+      { name: "Unichain", price: priceDifferences.unichainPrice },
+      { name: "Arbitrum", price: priceDifferences.arbitrumPrice },
+      { name: "Base", price: priceDifferences.basePrice },
     ];
 
-    previousValues.current = {
-      ethPrice: priceDifferences.ethPrice,
-      unichainPrice: priceDifferences.unichainPrice,
-      arbitrumPrice: priceDifferences.arbitrumPrice,
-      basePrice: priceDifferences.basePrice,
-      ethToUnichain: priceDifferences.ethToUnichain,
-      ethToArbitrum: priceDifferences.ethToArbitrum,
-      ethToBase: priceDifferences.ethToBase,
-      maxDifference: priceDifferences.maxDifference,
-    };
+    chains.forEach((chain) => {
+      const priceElement = priceRefs.current[chain.name];
+      const prevPrice =
+        previousValues.current[`${chain.name}_price`] || chain.price;
+
+      if (priceElement) {
+        cleanups.push(
+          animateValue(priceElement, prevPrice, chain.price, (v) =>
+            formatPrice(v)
+          )
+        );
+      }
+
+      previousValues.current[`${chain.name}_price`] = chain.price;
+    });
+
+    // Animate percentages for non-Ethereum chains
+    const percentages = [
+      { name: "Unichain", value: priceDifferences.ethToUnichain },
+      { name: "Arbitrum", value: priceDifferences.ethToArbitrum },
+      { name: "Base", value: priceDifferences.ethToBase },
+    ];
+
+    percentages.forEach(({ name, value }) => {
+      const percentageElement = percentageRefs.current[name];
+      const prevValue = previousValues.current[`${name}_percentage`] || value;
+
+      if (percentageElement) {
+        cleanups.push(
+          animateValue(
+            percentageElement,
+            prevValue,
+            value,
+            (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+          )
+        );
+      }
+
+      previousValues.current[`${name}_percentage`] = value;
+    });
+
+    // Animate max difference
+    const prevMaxDiff =
+      previousValues.current.maxDifference || priceDifferences.maxDifference;
+    cleanups.push(
+      animateValue(
+        maxDifferenceRef.current,
+        prevMaxDiff,
+        priceDifferences.maxDifference,
+        (v) => `${v.toFixed(3)}%`
+      )
+    );
+    previousValues.current.maxDifference = priceDifferences.maxDifference;
 
     return () => cleanups.forEach((cleanup) => cleanup?.());
   }, [priceDifferences]);
@@ -701,118 +691,128 @@ export function ArbitrageSummary() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border border-border/50 bg-gradient-to-r from-background to-secondary/10 p-6"
+          className="rounded-lg border border-border/50 bg-gradient-to-r from-background to-secondary/10 p-4"
         >
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Ethereum</div>
-              <div
-                ref={ethPriceRef}
-                className="text-xl font-mono text-gray-500 tabular-nums"
-              >
-                {formatPrice(priceDifferences.ethPrice)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                TVL: {ethPool ? formatUSD(ethPool.totalValueLockedUSD) : "N/A"}
-              </div>
-              <div className="text-xs text-center mt-1">
-                <span className="font-semibold text-gray-500">0.00%</span>
-              </div>
+          <div className="flex items-start justify-between gap-6">
+            {/* Sorted Price List */}
+            <div className="flex-1">
+              <motion.div className="space-y-2" layout>
+                {(() => {
+                  // Create array of chains with their data for sorting
+                  const chains = [
+                    {
+                      name: "Ethereum",
+                      price: priceDifferences.ethPrice,
+                      color: "text-gray-500",
+                      pool: ethPool,
+                    },
+                    {
+                      name: "Unichain",
+                      price: priceDifferences.unichainPrice,
+                      color: "text-pink-500",
+                      pool: unichainPool,
+                    },
+                    {
+                      name: "Arbitrum",
+                      price: priceDifferences.arbitrumPrice,
+                      color: "text-orange-500",
+                      pool: arbitrumPool,
+                    },
+                    {
+                      name: "Base",
+                      price: priceDifferences.basePrice,
+                      color: "text-blue-500",
+                      pool: basePool,
+                    },
+                  ];
+
+                  // Sort by price (highest first)
+                  const sortedChains = chains.sort((a, b) => b.price - a.price);
+
+                  return sortedChains.map((chain, index) => {
+                    // Calculate the actual percentage difference from Ethereum
+                    const ethPrice = priceDifferences.ethPrice;
+                    const priceDiff =
+                      ((chain.price - ethPrice) / ethPrice) * 100;
+                    const isAboveEth = chain.price > ethPrice;
+                    const isEthereum = chain.name === "Ethereum";
+
+                    return (
+                      <motion.div
+                        key={chain.name}
+                        layout
+                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                        className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/20 hover:bg-secondary/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium min-w-[70px]">
+                            {chain.name}
+                          </div>
+                          <div
+                            ref={(el) => {
+                              priceRefs.current[chain.name] = el;
+                            }}
+                            className={`text-lg font-mono ${chain.color} tabular-nums`}
+                          >
+                            {formatPrice(chain.price)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="text-xs text-muted-foreground">
+                            TVL:{" "}
+                            {chain.pool
+                              ? formatUSD(chain.pool.totalValueLockedUSD)
+                              : "N/A"}
+                          </div>
+                          <div className="text-right min-w-[60px]">
+                            {isEthereum ? (
+                              <span className="text-sm font-semibold text-gray-500">
+                                0.00%
+                              </span>
+                            ) : (
+                              <span
+                                ref={(el) => {
+                                  percentageRefs.current[chain.name] = el;
+                                }}
+                                className={`text-sm font-semibold tabular-nums ${
+                                  isAboveEth ? "text-green-500" : "text-red-500"
+                                }`}
+                              >
+                                {isAboveEth ? "+" : ""}
+                                {priceDiff.toFixed(2)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  });
+                })()}
+              </motion.div>
             </div>
 
+            {/* Max Price Difference */}
             <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Unichain</div>
+              <div className="flex items-center gap-2 mb-2">
+                {priceDifferences.maxDifference > 1 ? (
+                  <TrendingUp className="w-4 h-4 text-orange-500" />
+                ) : (
+                  <TrendingDown className="w-4 h-4 text-green-500" />
+                )}
+                <span className="text-sm font-semibold">Max Spread</span>
+              </div>
               <div
-                ref={unichainPriceRef}
-                className="text-xl font-mono text-pink-500 tabular-nums"
+                ref={maxDifferenceRef}
+                className={`text-2xl font-bold tabular-nums ${
+                  priceDifferences.maxDifference > 2
+                    ? "text-red-500"
+                    : priceDifferences.maxDifference > 1
+                      ? "text-orange-500"
+                      : "text-green-500"
+                }`}
               >
-                {formatPrice(priceDifferences.unichainPrice)}
+                {priceDifferences.maxDifference.toFixed(3)}%
               </div>
-              <div className="text-xs text-muted-foreground">
-                TVL:{" "}
-                {unichainPool
-                  ? formatUSD(unichainPool.totalValueLockedUSD)
-                  : "N/A"}
-              </div>
-              <div className="text-xs text-center mt-1">
-                <span
-                  ref={ethToUnichainRef}
-                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToUnichain) > 1 ? "text-orange-500" : "text-green-500"}`}
-                >
-                  {priceDifferences.ethToUnichain.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Arbitrum</div>
-              <div
-                ref={arbitrumPriceRef}
-                className="text-xl font-mono text-orange-500 tabular-nums"
-              >
-                {formatPrice(priceDifferences.arbitrumPrice)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                TVL:{" "}
-                {arbitrumPool
-                  ? formatUSD(arbitrumPool.totalValueLockedUSD)
-                  : "N/A"}
-              </div>
-              <div className="text-xs text-center mt-1">
-                <span
-                  ref={ethToArbitrumRef}
-                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToArbitrum) > 1 ? "text-orange-500" : "text-green-500"}`}
-                >
-                  {priceDifferences.ethToArbitrum.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-sm text-muted-foreground mb-1">Base</div>
-              <div
-                ref={basePriceRef}
-                className="text-xl font-mono text-blue-500 tabular-nums"
-              >
-                {formatPrice(priceDifferences.basePrice)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                TVL:{" "}
-                {basePool ? formatUSD(basePool.totalValueLockedUSD) : "N/A"}
-              </div>
-              <div className="text-xs text-center mt-1">
-                <span
-                  ref={ethToBaseRef}
-                  className={`font-semibold tabular-nums ${Math.abs(priceDifferences.ethToBase) > 1 ? "text-orange-500" : "text-green-500"}`}
-                >
-                  {priceDifferences.ethToBase.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-4">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              {priceDifferences.maxDifference > 1 ? (
-                <TrendingUp className="w-5 h-5 text-orange-500" />
-              ) : (
-                <TrendingDown className="w-5 h-5 text-green-500" />
-              )}
-              <span className="text-sm font-semibold">
-                Max Price Difference
-              </span>
-            </div>
-            <div
-              ref={maxDifferenceRef}
-              className={`text-2xl font-bold tabular-nums ${
-                priceDifferences.maxDifference > 2
-                  ? "text-red-500"
-                  : priceDifferences.maxDifference > 1
-                    ? "text-orange-500"
-                    : "text-green-500"
-              }`}
-            >
-              {priceDifferences.maxDifference.toFixed(3)}%
             </div>
           </div>
         </motion.div>
