@@ -51,6 +51,7 @@ const NETWORK_EXPLORER_URLS: Record<string, string> = {
   "130": "https://unichain.org", // Placeholder for Unichain explorer
   "42161": "https://arbiscan.io",
   "8453": "https://basescan.org",
+  "10": "https://optimistic.etherscan.io",
 };
 
 // Helper function to format timestamp for chart
@@ -76,6 +77,7 @@ interface PriceChartProps {
   unichainData: ChartData[];
   arbitrumData: ChartData[];
   baseData: ChartData[];
+  optimismData: ChartData[];
   width?: number;
   height?: number;
 }
@@ -85,6 +87,7 @@ const PriceChart = ({
   unichainData,
   arbitrumData,
   baseData,
+  optimismData,
   width = 800,
   height = 400,
 }: PriceChartProps) => {
@@ -95,7 +98,13 @@ const PriceChart = ({
   const chartHeight = height - topPadding - bottomPadding;
 
   // Combine all data to find min/max values
-  const allData = [...ethData, ...unichainData, ...arbitrumData, ...baseData];
+  const allData = [
+    ...ethData,
+    ...unichainData,
+    ...arbitrumData,
+    ...baseData,
+    ...optimismData,
+  ];
   if (allData.length === 0) return null;
 
   // Extreme y-axis zoom for maximum granularity to see tiny price differences
@@ -130,6 +139,7 @@ const PriceChart = ({
       ...unichainData.map((d) => d.amountUSD),
       ...arbitrumData.map((d) => d.amountUSD),
       ...baseData.map((d) => d.amountUSD),
+      ...optimismData.map((d) => d.amountUSD),
     ].filter((amount) => amount > 0);
 
     if (allAmounts.length === 0) return 3;
@@ -163,6 +173,7 @@ const PriceChart = ({
   const unichainPath = createPath(unichainData);
   const arbitrumPath = createPath(arbitrumData);
   const basePath = createPath(baseData);
+  const optimismPath = createPath(optimismData);
 
   // Y-axis ticks (maximum ticks for ultra-fine granularity)
   const yTicks = [];
@@ -327,6 +338,16 @@ const PriceChart = ({
           />
         )}
 
+        {optimismPath && (
+          <path
+            d={optimismPath}
+            fill="none"
+            stroke="#dc2626"
+            strokeWidth="2"
+            opacity="0.8"
+          />
+        )}
+
         {/* Data points - bubble size based on swap amount */}
         {ethData.map((point, index) => (
           <circle
@@ -392,9 +413,25 @@ const PriceChart = ({
           </circle>
         ))}
 
+        {optimismData.map((point, index) => (
+          <circle
+            key={`optimism-${index}`}
+            cx={scaleX(point.timestamp)}
+            cy={scaleY(point.price)}
+            r={scaleBubbleSize(point.amountUSD)}
+            fill="#dc2626"
+            opacity="0.7"
+            stroke="#dc2626"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Optimism: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
+        ))}
+
         {/* Legend - positioned at bottom to avoid covering data */}
         <g transform={`translate(${horizontalPadding + 20}, ${height - 40})`}>
-          <rect width="520" height="25" fill="rgba(0,0,0,0.1)" rx="4" />
+          <rect width="620" height="25" fill="rgba(0,0,0,0.1)" rx="4" />
 
           {/* Ethereum */}
           <line
@@ -452,13 +489,27 @@ const PriceChart = ({
             Base
           </text>
 
+          {/* Optimism */}
+          <line
+            x1="350"
+            y1="15"
+            x2="365"
+            y2="15"
+            stroke="#dc2626"
+            strokeWidth="2"
+          />
+          <circle cx="357.5" cy="15" r="3" fill="#dc2626" />
+          <text x="370" y="18" fontSize="11" fill="currentColor">
+            Optimism
+          </text>
+
           {/* Bubble size explanation */}
-          <text x="350" y="12" fontSize="10" fill="currentColor" opacity="0.7">
+          <text x="450" y="12" fontSize="10" fill="currentColor" opacity="0.7">
             Bubble size = Swap volume
           </text>
-          <circle cx="360" cy="20" r="2" fill="currentColor" opacity="0.5" />
-          <circle cx="370" cy="20" r="4" fill="currentColor" opacity="0.5" />
-          <circle cx="385" cy="20" r="6" fill="currentColor" opacity="0.5" />
+          <circle cx="460" cy="20" r="2" fill="currentColor" opacity="0.5" />
+          <circle cx="470" cy="20" r="4" fill="currentColor" opacity="0.5" />
+          <circle cx="485" cy="20" r="6" fill="currentColor" opacity="0.5" />
         </g>
       </svg>
     </div>
@@ -476,10 +527,12 @@ export function ArbitrageSummary() {
     unichainPool,
     arbitrumPool,
     basePool,
+    optimismPool,
     ethChartData,
     unichainChartData,
     arbitrumChartData,
     baseChartData,
+    optimismChartData,
   } = useArbitrage();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -489,9 +542,11 @@ export function ArbitrageSummary() {
   const unichainPriceValue = useMotionValue(0);
   const arbitrumPriceValue = useMotionValue(0);
   const basePriceValue = useMotionValue(0);
+  const optimismPriceValue = useMotionValue(0);
   const ethToUnichainValue = useMotionValue(0);
   const ethToArbitrumValue = useMotionValue(0);
   const ethToBaseValue = useMotionValue(0);
+  const ethToOptimismValue = useMotionValue(0);
   const maxDifferenceValue = useMotionValue(0);
 
   // Transform motion values to formatted strings
@@ -503,6 +558,9 @@ export function ArbitrageSummary() {
     formatPrice(v)
   );
   const basePriceDisplay = useTransform(basePriceValue, (v) => formatPrice(v));
+  const optimismPriceDisplay = useTransform(optimismPriceValue, (v) =>
+    formatPrice(v)
+  );
   const ethToUnichainDisplay = useTransform(
     ethToUnichainValue,
     (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
@@ -513,6 +571,10 @@ export function ArbitrageSummary() {
   );
   const ethToBaseDisplay = useTransform(
     ethToBaseValue,
+    (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+  );
+  const ethToOptimismDisplay = useTransform(
+    ethToOptimismValue,
     (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
   );
   const maxDifferenceDisplay = useTransform(
@@ -541,6 +603,10 @@ export function ArbitrageSummary() {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
     });
+    animate(optimismPriceValue, priceDifferences.optimismPrice, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
     animate(ethToUnichainValue, priceDifferences.ethToUnichain, {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
@@ -550,6 +616,10 @@ export function ArbitrageSummary() {
       ease: [0.32, 0.72, 0, 1],
     });
     animate(ethToBaseValue, priceDifferences.ethToBase, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
+    animate(ethToOptimismValue, priceDifferences.ethToOptimism, {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
     });
@@ -563,9 +633,11 @@ export function ArbitrageSummary() {
     unichainPriceValue,
     arbitrumPriceValue,
     basePriceValue,
+    optimismPriceValue,
     ethToUnichainValue,
     ethToArbitrumValue,
     ethToBaseValue,
+    ethToOptimismValue,
     maxDifferenceValue,
   ]);
 
@@ -604,8 +676,8 @@ export function ArbitrageSummary() {
           Multi-Chain ETH/USDC Price Arbitrage
         </h2>
         <p className="text-muted-foreground text-sm">
-          Real-time price comparison across Ethereum, Unichain, Arbitrum, and
-          Base networks for ETH/USDC pools
+          Real-time price comparison across Ethereum, Unichain, Arbitrum, Base,
+          and Optimism networks for ETH/USDC pools
         </p>
       </div>
 
@@ -613,7 +685,8 @@ export function ArbitrageSummary() {
       {(ethChartData ||
         unichainChartData ||
         arbitrumChartData ||
-        baseChartData) && (
+        baseChartData ||
+        optimismChartData) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -647,6 +720,12 @@ export function ArbitrageSummary() {
                     <span>Base</span>
                   </div>
                 )}
+                {optimismChartData && optimismChartData.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-600"></div>
+                    <span>Optimism</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -656,6 +735,7 @@ export function ArbitrageSummary() {
               unichainData={unichainChartData || []}
               arbitrumData={arbitrumChartData || []}
               baseData={baseChartData || []}
+              optimismData={optimismChartData || []}
               width={700}
               height={500}
             />
@@ -706,6 +786,11 @@ export function ArbitrageSummary() {
                           priceDisplay: basePriceDisplay,
                           percentageDisplay: ethToBaseDisplay,
                         };
+                      case "Optimism":
+                        return {
+                          priceDisplay: optimismPriceDisplay,
+                          percentageDisplay: ethToOptimismDisplay,
+                        };
                       default:
                         return { priceDisplay: null, percentageDisplay: null };
                     }
@@ -736,6 +821,12 @@ export function ArbitrageSummary() {
                       price: priceDifferences.basePrice,
                       color: "text-blue-500",
                       pool: basePool,
+                    },
+                    {
+                      name: "Optimism",
+                      price: priceDifferences.optimismPrice,
+                      color: "text-red-600",
+                      pool: optimismPool,
                     },
                   ];
 
@@ -889,6 +980,12 @@ export function ArbitrageSummary() {
                       <span>Base</span>
                     </div>
                   )}
+                  {optimismChartData && optimismChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-600"></div>
+                      <span>Optimism</span>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => setIsFullscreen(false)}
@@ -907,6 +1004,7 @@ export function ArbitrageSummary() {
                 unichainData={unichainChartData || []}
                 arbitrumData={arbitrumChartData || []}
                 baseData={baseChartData || []}
+                optimismData={optimismChartData || []}
                 width={1200}
                 height={900}
               />

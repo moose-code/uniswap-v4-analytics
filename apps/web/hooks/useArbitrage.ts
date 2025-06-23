@@ -58,6 +58,7 @@ const ARBITRAGE_POOL_IDS = [
   "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9", // Unichain ETH/USDC
   "42161_0x864abca0a6202dba5b8868772308da953ff125b0f95015adbf89aaf579e903a8", // Arbitrum ETH/USDC
   "8453_0x96d4b53a38337a5733179751781178a2613306063c511b78cd02684739288c0a", // Base ETH/USDC
+  "10_0x51bf4cc5b8d9f7f759e41f572fe2a25bc2aeb42432bf12544a350595e5c8bb43", // Optimism ETH/USDC
 ];
 
 // Helper function to calculate price from sqrtPriceX96
@@ -149,12 +150,14 @@ export function useArbitrage() {
   const unichainPool = pools.find((p) => p.chainId === "130");
   const arbitrumPool = pools.find((p) => p.chainId === "42161");
   const basePool = pools.find((p) => p.chainId === "8453");
+  const optimismPool = pools.find((p) => p.chainId === "10");
 
   // Process swaps into chart data for all chains
-  const ethChartData = processSwapsForChart(swaps, "1", 25);
-  const unichainChartData = processSwapsForChart(swaps, "130", 25);
-  const arbitrumChartData = processSwapsForChart(swaps, "42161", 25);
-  const baseChartData = processSwapsForChart(swaps, "8453", 25);
+  const ethChartData = processSwapsForChart(swaps, "1", 20);
+  const unichainChartData = processSwapsForChart(swaps, "130", 20);
+  const arbitrumChartData = processSwapsForChart(swaps, "42161", 20);
+  const baseChartData = processSwapsForChart(swaps, "8453", 20);
+  const optimismChartData = processSwapsForChart(swaps, "10", 20);
 
   // Get current prices from most recent swaps for all chains
   const getCurrentPrice = (chartData: any[]) => {
@@ -166,6 +169,7 @@ export function useArbitrage() {
   const unichainPrice = getCurrentPrice(unichainChartData);
   const arbitrumPrice = getCurrentPrice(arbitrumChartData);
   const basePrice = getCurrentPrice(baseChartData);
+  const optimismPrice = getCurrentPrice(optimismChartData);
 
   // Calculate price differences (using ETH as base for comparison)
   const priceDifferences =
@@ -175,9 +179,11 @@ export function useArbitrage() {
           unichainPrice,
           arbitrumPrice,
           basePrice,
+          optimismPrice,
           ethToUnichain: ((ethPrice - unichainPrice) / ethPrice) * 100,
           ethToArbitrum: ((ethPrice - arbitrumPrice) / ethPrice) * 100,
           ethToBase: ((ethPrice - basePrice) / ethPrice) * 100,
+          ethToOptimism: ((ethPrice - optimismPrice) / ethPrice) * 100,
           maxDifference: (() => {
             // Find maximum difference between ANY two pools
             const prices = [
@@ -185,6 +191,7 @@ export function useArbitrage() {
               unichainPrice,
               arbitrumPrice,
               basePrice,
+              optimismPrice,
             ].filter((p) => p > 0);
             if (prices.length < 2) return 0;
 
@@ -207,9 +214,11 @@ export function useArbitrage() {
     unichainPool,
     arbitrumPool,
     basePool,
+    optimismPool,
     ethChartData,
     unichainChartData,
     arbitrumChartData,
     baseChartData,
+    optimismChartData,
   };
 }
