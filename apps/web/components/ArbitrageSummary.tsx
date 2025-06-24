@@ -80,6 +80,7 @@ interface PriceChartProps {
   optimismData: ChartData[];
   width?: number;
   height?: number;
+  isMobile?: boolean;
 }
 
 const PriceChart = ({
@@ -90,10 +91,12 @@ const PriceChart = ({
   optimismData,
   width = 800,
   height = 400,
+  isMobile = false,
 }: PriceChartProps) => {
-  const horizontalPadding = 80; // Keep space for Y-axis labels
-  const topPadding = 20; // Minimal top whitespace
-  const bottomPadding = 80; // Space for X-axis labels and legend
+  // Responsive padding based on mobile
+  const horizontalPadding = isMobile ? 60 : 80; // More padding on mobile for Y-axis labels
+  const topPadding = 20;
+  const bottomPadding = isMobile ? 100 : 80; // More space for mobile legend
   const chartWidth = width - 2 * horizontalPadding;
   const chartHeight = height - topPadding - bottomPadding;
 
@@ -262,7 +265,7 @@ const PriceChart = ({
               y={scaleY(price)}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize="10"
+              fontSize={isMobile ? "8" : "10"}
               fill="currentColor"
               opacity="0.7"
             >
@@ -430,86 +433,232 @@ const PriceChart = ({
         ))}
 
         {/* Legend - positioned at bottom to avoid covering data */}
-        <g transform={`translate(${horizontalPadding + 20}, ${height - 40})`}>
-          <rect width="620" height="25" fill="rgba(0,0,0,0.1)" rx="4" />
-
-          {/* Ethereum */}
-          <line
-            x1="10"
-            y1="15"
-            x2="25"
-            y2="15"
-            stroke="#6b7280"
-            strokeWidth="2"
+        <g
+          transform={`translate(${horizontalPadding + 10}, ${height - (isMobile ? 60 : 40)})`}
+        >
+          <rect
+            width={isMobile ? Math.min(520, chartWidth - 20) : "620"}
+            height={isMobile ? "40" : "25"}
+            fill="rgba(0,0,0,0.1)"
+            rx="4"
           />
-          <circle cx="17.5" cy="15" r="3" fill="#6b7280" />
-          <text x="30" y="18" fontSize="11" fill="currentColor">
-            Ethereum
-          </text>
 
-          {/* Unichain */}
-          <line
-            x1="100"
-            y1="15"
-            x2="115"
-            y2="15"
-            stroke="#ec4899"
-            strokeWidth="2"
-          />
-          <circle cx="107.5" cy="15" r="3" fill="#ec4899" />
-          <text x="120" y="18" fontSize="11" fill="currentColor">
-            Unichain
-          </text>
+          {/* Mobile: Stack legend items vertically, Desktop: Horizontal layout */}
+          {isMobile ? (
+            <>
+              {/* First row */}
+              <g transform="translate(0, 10)">
+                {/* Ethereum */}
+                <line
+                  x1="10"
+                  y1="8"
+                  x2="20"
+                  y2="8"
+                  stroke="#6b7280"
+                  strokeWidth="2"
+                />
+                <circle cx="15" cy="8" r="2" fill="#6b7280" />
+                <text x="25" y="11" fontSize="9" fill="currentColor">
+                  ETH
+                </text>
 
-          {/* Arbitrum */}
-          <line
-            x1="190"
-            y1="15"
-            x2="205"
-            y2="15"
-            stroke="#f97316"
-            strokeWidth="2"
-          />
-          <circle cx="197.5" cy="15" r="3" fill="#f97316" />
-          <text x="210" y="18" fontSize="11" fill="currentColor">
-            Arbitrum
-          </text>
+                {/* Unichain */}
+                <line
+                  x1="60"
+                  y1="8"
+                  x2="70"
+                  y2="8"
+                  stroke="#ec4899"
+                  strokeWidth="2"
+                />
+                <circle cx="65" cy="8" r="2" fill="#ec4899" />
+                <text x="75" y="11" fontSize="9" fill="currentColor">
+                  UNI
+                </text>
 
-          {/* Base */}
-          <line
-            x1="280"
-            y1="15"
-            x2="295"
-            y2="15"
-            stroke="#3b82f6"
-            strokeWidth="2"
-          />
-          <circle cx="287.5" cy="15" r="3" fill="#3b82f6" />
-          <text x="300" y="18" fontSize="11" fill="currentColor">
-            Base
-          </text>
+                {/* Arbitrum */}
+                <line
+                  x1="110"
+                  y1="8"
+                  x2="120"
+                  y2="8"
+                  stroke="#f97316"
+                  strokeWidth="2"
+                />
+                <circle cx="115" cy="8" r="2" fill="#f97316" />
+                <text x="125" y="11" fontSize="9" fill="currentColor">
+                  ARB
+                </text>
 
-          {/* Optimism */}
-          <line
-            x1="350"
-            y1="15"
-            x2="365"
-            y2="15"
-            stroke="#dc2626"
-            strokeWidth="2"
-          />
-          <circle cx="357.5" cy="15" r="3" fill="#dc2626" />
-          <text x="370" y="18" fontSize="11" fill="currentColor">
-            Optimism
-          </text>
+                {/* Base */}
+                <line
+                  x1="160"
+                  y1="8"
+                  x2="170"
+                  y2="8"
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                />
+                <circle cx="165" cy="8" r="2" fill="#3b82f6" />
+                <text x="175" y="11" fontSize="9" fill="currentColor">
+                  BASE
+                </text>
 
-          {/* Bubble size explanation */}
-          <text x="450" y="12" fontSize="10" fill="currentColor" opacity="0.7">
-            Bubble size = Swap volume
-          </text>
-          <circle cx="460" cy="20" r="2" fill="currentColor" opacity="0.5" />
-          <circle cx="470" cy="20" r="4" fill="currentColor" opacity="0.5" />
-          <circle cx="485" cy="20" r="6" fill="currentColor" opacity="0.5" />
+                {/* Optimism */}
+                <line
+                  x1="220"
+                  y1="8"
+                  x2="230"
+                  y2="8"
+                  stroke="#dc2626"
+                  strokeWidth="2"
+                />
+                <circle cx="225" cy="8" r="2" fill="#dc2626" />
+                <text x="235" y="11" fontSize="9" fill="currentColor">
+                  OP
+                </text>
+              </g>
+
+              {/* Second row - Bubble explanation */}
+              <g transform="translate(0, 25)">
+                <text
+                  x="10"
+                  y="8"
+                  fontSize="8"
+                  fill="currentColor"
+                  opacity="0.7"
+                >
+                  Bubble size = Volume
+                </text>
+                <circle
+                  cx="90"
+                  cy="5"
+                  r="1"
+                  fill="currentColor"
+                  opacity="0.5"
+                />
+                <circle
+                  cx="95"
+                  cy="5"
+                  r="2"
+                  fill="currentColor"
+                  opacity="0.5"
+                />
+                <circle
+                  cx="102"
+                  cy="5"
+                  r="3"
+                  fill="currentColor"
+                  opacity="0.5"
+                />
+              </g>
+            </>
+          ) : (
+            <>
+              {/* Desktop layout - horizontal */}
+              {/* Ethereum */}
+              <line
+                x1="10"
+                y1="15"
+                x2="25"
+                y2="15"
+                stroke="#6b7280"
+                strokeWidth="2"
+              />
+              <circle cx="17.5" cy="15" r="3" fill="#6b7280" />
+              <text x="30" y="18" fontSize="11" fill="currentColor">
+                Ethereum
+              </text>
+
+              {/* Unichain */}
+              <line
+                x1="100"
+                y1="15"
+                x2="115"
+                y2="15"
+                stroke="#ec4899"
+                strokeWidth="2"
+              />
+              <circle cx="107.5" cy="15" r="3" fill="#ec4899" />
+              <text x="120" y="18" fontSize="11" fill="currentColor">
+                Unichain
+              </text>
+
+              {/* Arbitrum */}
+              <line
+                x1="190"
+                y1="15"
+                x2="205"
+                y2="15"
+                stroke="#f97316"
+                strokeWidth="2"
+              />
+              <circle cx="197.5" cy="15" r="3" fill="#f97316" />
+              <text x="210" y="18" fontSize="11" fill="currentColor">
+                Arbitrum
+              </text>
+
+              {/* Base */}
+              <line
+                x1="280"
+                y1="15"
+                x2="295"
+                y2="15"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              <circle cx="287.5" cy="15" r="3" fill="#3b82f6" />
+              <text x="300" y="18" fontSize="11" fill="currentColor">
+                Base
+              </text>
+
+              {/* Optimism */}
+              <line
+                x1="350"
+                y1="15"
+                x2="365"
+                y2="15"
+                stroke="#dc2626"
+                strokeWidth="2"
+              />
+              <circle cx="357.5" cy="15" r="3" fill="#dc2626" />
+              <text x="370" y="18" fontSize="11" fill="currentColor">
+                Optimism
+              </text>
+
+              {/* Bubble size explanation */}
+              <text
+                x="450"
+                y="12"
+                fontSize="10"
+                fill="currentColor"
+                opacity="0.7"
+              >
+                Bubble size = Swap volume
+              </text>
+              <circle
+                cx="460"
+                cy="20"
+                r="2"
+                fill="currentColor"
+                opacity="0.5"
+              />
+              <circle
+                cx="470"
+                cy="20"
+                r="4"
+                fill="currentColor"
+                opacity="0.5"
+              />
+              <circle
+                cx="485"
+                cy="20"
+                r="6"
+                fill="currentColor"
+                opacity="0.5"
+              />
+            </>
+          )}
         </g>
       </svg>
     </div>
@@ -536,6 +685,19 @@ export function ArbitrageSummary() {
   } = useArbitrage();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Motion values for smooth counting animations
   const ethPriceValue = useMotionValue(0);
@@ -672,10 +834,12 @@ export function ArbitrageSummary() {
     <div className="space-y-4">
       {/* Header */}
       <div className="text-center space-y-1">
-        <h2 className="text-2xl font-bold">
+        <h2 className={`font-bold ${isMobile ? "text-xl" : "text-2xl"}`}>
           Multi-Chain ETH/USDC Price Arbitrage
         </h2>
-        <p className="text-muted-foreground text-sm">
+        <p
+          className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}
+        >
           Real-time price comparison across Ethereum, Unichain, Arbitrum, Base,
           and Optimism networks for ETH/USDC pools
         </p>
@@ -692,61 +856,82 @@ export function ArbitrageSummary() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-lg border border-border/50 overflow-hidden relative"
         >
-          <div className="bg-secondary/30 px-6 py-4 border-b border-border/50">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Real-Time Price Comparison</h3>
-              <div className="flex items-center gap-4 text-sm flex-wrap">
+          <div
+            className={`bg-secondary/30 border-b border-border/50 ${isMobile ? "px-3 py-3" : "px-6 py-4"}`}
+          >
+            <div
+              className={`${isMobile ? "space-y-2" : "flex items-center justify-between"}`}
+            >
+              <h3 className={`font-semibold ${isMobile ? "text-sm" : ""}`}>
+                Real-Time Price Comparison
+              </h3>
+              <div
+                className={`flex items-center gap-2 text-sm ${isMobile ? "flex-wrap gap-1 justify-center" : "gap-4 flex-wrap"}`}
+              >
                 {ethChartData && ethChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                    <span>Ethereum</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-gray-500 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>ETH</span>
                   </div>
                 )}
                 {unichainChartData && unichainChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                    <span>Unichain</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-pink-500 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>UNI</span>
                   </div>
                 )}
                 {arbitrumChartData && arbitrumChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                    <span>Arbitrum</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-orange-500 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>ARB</span>
                   </div>
                 )}
                 {baseChartData && baseChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                    <span>Base</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-blue-500 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>BASE</span>
                   </div>
                 )}
                 {optimismChartData && optimismChartData.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-600"></div>
-                    <span>Optimism</span>
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-red-600 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>OP</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
-          <div className="p-4 relative">
+          <div className={`relative ${isMobile ? "p-2" : "p-4"}`}>
             <PriceChart
               ethData={ethChartData || []}
               unichainData={unichainChartData || []}
               arbitrumData={arbitrumChartData || []}
               baseData={baseChartData || []}
               optimismData={optimismChartData || []}
-              width={700}
-              height={500}
+              width={isMobile ? 350 : 700}
+              height={isMobile ? 300 : 500}
+              isMobile={isMobile}
             />
             {/* Fullscreen button */}
-            <button
-              onClick={() => setIsFullscreen(true)}
-              className="absolute bottom-4 right-4 p-2 bg-background/80 hover:bg-background border border-border rounded-lg shadow-sm transition-colors group"
-              title="Expand chart to fullscreen"
-            >
-              <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
-            </button>
+            {!isMobile && (
+              <button
+                onClick={() => setIsFullscreen(true)}
+                className="absolute bottom-4 right-4 p-2 bg-background/80 hover:bg-background border border-border rounded-lg shadow-sm transition-colors group"
+                title="Expand chart to fullscreen"
+              >
+                <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+              </button>
+            )}
           </div>
         </motion.div>
       )}
@@ -756,11 +941,13 @@ export function ArbitrageSummary() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-lg border border-border/50 bg-gradient-to-r from-background to-secondary/10 p-4"
+          className={`rounded-lg border border-border/50 bg-gradient-to-r from-background to-secondary/10 ${isMobile ? "p-3" : "p-4"}`}
         >
-          <div className="flex items-start justify-between gap-8">
+          <div
+            className={`${isMobile ? "space-y-4" : "flex items-start justify-between gap-8"}`}
+          >
             {/* Sorted Price List */}
-            <div className="flex-1 max-w-[70%]">
+            <div className={`flex-1 ${isMobile ? "" : "max-w-[70%]"}`}>
               <motion.div className="space-y-2" layout>
                 {(() => {
                   // Helper function to get motion value for each chain
@@ -852,37 +1039,51 @@ export function ArbitrageSummary() {
                           opacity: { duration: 0.3 },
                           scale: { duration: 0.3 },
                         }}
-                        className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/20 hover:bg-secondary/30 transition-colors"
+                        className={`flex items-center justify-between bg-secondary/20 hover:bg-secondary/30 transition-colors rounded-md ${isMobile ? "py-2 px-2" : "py-2 px-3"}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="text-sm font-medium min-w-[70px]">
-                            {chain.name}
+                        <div
+                          className={`flex items-center ${isMobile ? "gap-2" : "gap-3"}`}
+                        >
+                          <div
+                            className={`font-medium ${isMobile ? "text-xs min-w-[50px]" : "text-sm min-w-[70px]"}`}
+                          >
+                            {isMobile
+                              ? chain.name.slice(0, 3).toUpperCase()
+                              : chain.name}
                           </div>
                           <motion.div
                             layoutId={`price-${chain.name}`}
-                            className={`text-lg font-mono ${chain.color} tabular-nums`}
+                            className={`font-mono ${chain.color} tabular-nums ${isMobile ? "text-sm" : "text-lg"}`}
                           >
                             {getMotionValue(chain.name).priceDisplay}
                           </motion.div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs text-muted-foreground">
+                        <div
+                          className={`flex items-center ${isMobile ? "gap-1" : "gap-2"}`}
+                        >
+                          <div
+                            className={`text-muted-foreground ${isMobile ? "text-xs" : "text-xs"}`}
+                          >
                             TVL:{" "}
                             {chain.pool
                               ? formatUSD(chain.pool.totalValueLockedUSD)
                               : "N/A"}
                           </div>
-                          <div className="text-right min-w-[50px]">
+                          <div
+                            className={`text-right ${isMobile ? "min-w-[40px]" : "min-w-[50px]"}`}
+                          >
                             {isEthereum ? (
-                              <span className="text-sm font-semibold text-gray-500">
+                              <span
+                                className={`font-semibold text-gray-500 ${isMobile ? "text-xs" : "text-sm"}`}
+                              >
                                 0.00%
                               </span>
                             ) : (
                               <motion.span
                                 layoutId={`percentage-${chain.name}`}
-                                className={`text-sm font-semibold tabular-nums ${
+                                className={`font-semibold tabular-nums ${
                                   isAboveEth ? "text-green-500" : "text-red-500"
-                                }`}
+                                } ${isMobile ? "text-xs" : "text-sm"}`}
                               >
                                 {getMotionValue(chain.name).percentageDisplay}
                               </motion.span>
@@ -897,27 +1098,41 @@ export function ArbitrageSummary() {
             </div>
 
             {/* Max Price Difference */}
-            <div className="text-center min-w-[30%] flex flex-col justify-center">
-              <div className="flex items-center justify-center gap-2 mb-3">
+            <div
+              className={`text-center ${isMobile ? "w-full" : "min-w-[30%]"} flex flex-col justify-center`}
+            >
+              <div
+                className={`flex items-center justify-center gap-2 ${isMobile ? "mb-2" : "mb-3"}`}
+              >
                 {priceDifferences.maxDifference > 1 ? (
-                  <TrendingUp className="w-5 h-5 text-orange-500" />
+                  <TrendingUp
+                    className={`text-orange-500 ${isMobile ? "w-4 h-4" : "w-5 h-5"}`}
+                  />
                 ) : (
-                  <TrendingDown className="w-5 h-5 text-green-500" />
+                  <TrendingDown
+                    className={`text-green-500 ${isMobile ? "w-4 h-4" : "w-5 h-5"}`}
+                  />
                 )}
-                <span className="text-base font-semibold">Max Spread</span>
+                <span
+                  className={`font-semibold ${isMobile ? "text-sm" : "text-base"}`}
+                >
+                  Max Spread
+                </span>
               </div>
               <motion.div
-                className={`text-3xl font-bold tabular-nums ${
+                className={`font-bold tabular-nums ${
                   priceDifferences.maxDifference > 2
                     ? "text-red-500"
                     : priceDifferences.maxDifference > 1
                       ? "text-orange-500"
                       : "text-green-500"
-                }`}
+                } ${isMobile ? "text-2xl" : "text-3xl"}`}
               >
                 {maxDifferenceDisplay}
               </motion.div>
-              <div className="text-xs text-muted-foreground mt-2">
+              <div
+                className={`text-muted-foreground ${isMobile ? "text-xs mt-1" : "text-xs mt-2"}`}
+              >
                 {priceDifferences.maxDifference > 0.1
                   ? "Arbitrage Opportunity"
                   : "Below Fee Threshold (0.1%)"}
@@ -927,8 +1142,8 @@ export function ArbitrageSummary() {
         </motion.div>
       )}
 
-      {/* Fullscreen Modal */}
-      {isFullscreen && (
+      {/* Fullscreen Modal - Only shown on desktop */}
+      {isFullscreen && !isMobile && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1007,6 +1222,7 @@ export function ArbitrageSummary() {
                 optimismData={optimismChartData || []}
                 width={1200}
                 height={900}
+                isMobile={false}
               />
             </div>
           </motion.div>
