@@ -50,6 +50,7 @@ const NETWORK_NAMES: Record<string, string> = {
   "57073": "Ink",
   "1868": "Soneium",
   "130": "Unichain",
+  "480": "Worldchain",
 };
 
 // Network slugs for explorer URLs
