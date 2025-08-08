@@ -31,8 +31,8 @@ export function TabsContainer({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-center overflow-x-auto pb-2 px-2 -mx-2">
-        <div className="flex gap-4 md:gap-8 flex-nowrap">
+      <div className="flex justify-center pb-2 px-2 -mx-2">
+        <div className="flex gap-3 md:gap-6 flex-wrap justify-center">
           {tabs.map((tab) => (
             <button
               key={tab.id}

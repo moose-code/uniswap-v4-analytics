@@ -306,3 +306,61 @@ export const ARBITRAGE_SWAPS_QUERY = `
     }
   }
 `;
+
+// Orderbook specific queries
+export const POOL_BY_ID_QUERY = `
+  query poolById($poolId: String!) {
+    Pool(where: {id: {_eq: $poolId}}, limit: 1) {
+      id
+      chainId
+      name
+      token0
+      token1
+      feeTier
+      liquidity
+      sqrtPrice
+      token0Price
+      token1Price
+      tick
+      tickSpacing
+    }
+  }
+`;
+
+export const TOKENS_BY_IDS_QUERY = `
+  query tokensByIds($ids: [String!]!) {
+    Token(where: {id: {_in: $ids}}) {
+      id
+      symbol
+      name
+      decimals
+      derivedETH
+    }
+  }
+`;
+
+export const TICKS_BY_POOL_RANGE_QUERY = `
+  query ticksByPoolRange($poolId: String!, $minTick: numeric!, $maxTick: numeric!, $limit: Int!) {
+    Tick(
+      where: {pool: {id: {_eq: $poolId}}, tickIdx: {_gte: $minTick, _lte: $maxTick}},
+      order_by: {tickIdx: asc},
+      limit: $limit
+    ) {
+      id
+      tickIdx
+      liquidityNet
+      liquidityGross
+      price0
+      price1
+    }
+  }
+`;
+
+export const BUNDLE_QUERY = `
+  query bundleQuery {
+    Bundle(limit: 1) {
+      id
+      ethPriceUSD
+    }
+  }
+`;
