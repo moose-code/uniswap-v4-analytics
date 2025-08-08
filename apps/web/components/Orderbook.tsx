@@ -53,6 +53,7 @@ export function Orderbook() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [ethPriceUSD, setEthPriceUSD] = useState<number | null>(null);
+  const [invertPrices, setInvertPrices] = useState<boolean>(false);
 
   // fetch pool metadata
   useEffect(() => {
@@ -145,13 +146,28 @@ export function Orderbook() {
       };
 
     const currentTick = parseInt(pool.tick as string, 10);
+    const token0Decimals = parseInt(
+      (tokens[pool.token0]?.decimals as string) ?? "18",
+      10
+    );
+    const token1Decimals = parseInt(
+      (tokens[pool.token1]?.decimals as string) ?? "18",
+      10
+    );
+
+    // Price of token0 in terms of token1 (e.g., USDC per ETH for ETH/USDC)
+    const priceToken0InToken1FromTick = (tick: number) => {
+      const ratio = Math.pow(1.0001, tick);
+      return ratio * Math.pow(10, token0Decimals - token1Decimals);
+    };
     const bids: { price: number; liquidity: number }[] = [];
     const asks: { price: number; liquidity: number }[] = [];
 
     for (const t of ticks) {
       const tickIdx = parseInt(t.tickIdx, 10);
       const liq = Math.abs(parseFloat(t.liquidityNet || "0"));
-      const price = parseFloat(t.price0);
+      // Compute price ourselves to avoid orientation/decimals issues from the API
+      const price = priceToken0InToken1FromTick(tickIdx);
       if (!isFinite(price) || !isFinite(liq)) continue;
       if (tickIdx <= currentTick) bids.push({ price, liquidity: liq });
       else asks.push({ price, liquidity: liq });
@@ -178,13 +194,13 @@ export function Orderbook() {
     const step = 0.001; // 0.1%
     const bidBook = bucket(bids, step);
     const askBook = bucket(asks, step);
-    const currentPrice = parseFloat(pool.token0Price);
+    const currentPrice = priceToken0InToken1FromTick(currentTick);
     return {
       bids: bidBook.slice(-30),
       asks: askBook.slice(0, 30),
       currentPrice,
     };
-  }, [ticks, pool]);
+  }, [ticks, pool, tokens]);
 
   const token0 = pool ? tokens[pool.token0] : undefined;
   const token1 = pool ? tokens[pool.token1] : undefined;
@@ -197,12 +213,11 @@ export function Orderbook() {
     return parseFloat(token1.derivedETH) * ethPriceUSD;
   }, [token1, ethPriceUSD]);
   const lastPriceUSD = useMemo(() => {
-    // pool.token0Price = price of token0 in token1; USD price per token0 is token1USD * token0Price
-    if (!token1USD || !pool) return null;
-    const p = parseFloat(pool.token0Price);
-    if (!isFinite(p)) return null;
+    if (!token1USD) return null;
+    const p = ladder.currentPrice;
+    if (!isFinite(p) || p <= 0) return null;
     return p * token1USD;
-  }, [token1USD, pool]);
+  }, [token1USD, ladder.currentPrice]);
 
   return (
     <div className="space-y-4">
@@ -227,10 +242,23 @@ export function Orderbook() {
             Pair: {token0?.symbol ?? "Token0"} / {token1?.symbol ?? "Token1"} •
             Fee: {(Number(pool.feeTier) / 1e4).toFixed(2)}%
           </div>
-          <div className="text-2xl font-semibold">
-            {ladder.currentPrice.toLocaleString(undefined, {
-              maximumFractionDigits: 6,
-            })}
+          <div className="flex items-center gap-3">
+            <div className="text-2xl font-semibold">
+              {(invertPrices && ladder.currentPrice > 0
+                ? 1 / ladder.currentPrice
+                : ladder.currentPrice
+              ).toLocaleString(undefined, {
+                maximumFractionDigits: 6,
+              })}
+            </div>
+            <button
+              className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-secondary/40"
+              onClick={() => setInvertPrices((v) => !v)}
+            >
+              {invertPrices
+                ? `${token0?.symbol ?? "Token0"}/${token1?.symbol ?? "Token1"}`
+                : `${token1?.symbol ?? "Token1"}/${token0?.symbol ?? "Token0"}`}
+            </button>
           </div>
           <div className="text-xs text-muted-foreground">
             {lastPriceUSD
@@ -257,14 +285,23 @@ export function Orderbook() {
             </div>
             <div className="max-h-96 overflow-y-auto">
               {(() => {
+                // Optionally invert and sort for display
+                const rows = invertPrices
+                  ? ladder.bids
+                      .map((r) => ({
+                        price: r.price > 0 ? 1 / r.price : 0,
+                        liquidity: r.liquidity,
+                      }))
+                      .sort((a, b) => a.price - b.price)
+                  : [...ladder.bids];
                 const cumulative: number[] = [];
                 let run = 0;
-                for (const b of ladder.bids) {
+                for (const b of rows) {
                   run += b.liquidity;
                   cumulative.push(run);
                 }
                 const max = Math.max(...cumulative, 1);
-                return ladder.bids.map((row, idx) => (
+                return rows.map((row, idx) => (
                   <motion.div
                     key={`bid-${idx}`}
                     className="relative grid grid-cols-2 px-2 py-1 text-xs"
@@ -299,14 +336,22 @@ export function Orderbook() {
             </div>
             <div className="max-h-96 overflow-y-auto">
               {(() => {
+                const rows = invertPrices
+                  ? ladder.asks
+                      .map((r) => ({
+                        price: r.price > 0 ? 1 / r.price : 0,
+                        liquidity: r.liquidity,
+                      }))
+                      .sort((a, b) => a.price - b.price)
+                  : [...ladder.asks];
                 const cumulative: number[] = [];
                 let run = 0;
-                for (const a of ladder.asks) {
+                for (const a of rows) {
                   run += a.liquidity;
                   cumulative.push(run);
                 }
                 const max = Math.max(...cumulative, 1);
-                return ladder.asks.map((row, idx) => (
+                return rows.map((row, idx) => (
                   <motion.div
                     key={`ask-${idx}`}
                     className="relative grid grid-cols-2 px-2 py-1 text-xs"
