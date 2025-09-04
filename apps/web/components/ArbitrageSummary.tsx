@@ -1,5 +1,5 @@
 import { motion, animate, useMotionValue, useTransform } from "framer-motion";
-import { useArbitrage } from "@/hooks/useArbitrage";
+import { useArbitrage, ArbitragePair } from "@/hooks/useArbitrage";
 import {
   TrendingUp,
   TrendingDown,
@@ -52,6 +52,7 @@ const NETWORK_EXPLORER_URLS: Record<string, string> = {
   "42161": "https://arbiscan.io",
   "8453": "https://basescan.org",
   "10": "https://optimistic.etherscan.io",
+  "137": "https://polygonscan.com",
 };
 
 // Helper function to format timestamp for chart
@@ -78,6 +79,7 @@ interface PriceChartProps {
   arbitrumData: ChartData[];
   baseData: ChartData[];
   optimismData: ChartData[];
+  polygonData: ChartData[];
   width?: number;
   height?: number;
   isMobile?: boolean;
@@ -89,6 +91,7 @@ const PriceChart = ({
   arbitrumData,
   baseData,
   optimismData,
+  polygonData,
   width = 800,
   height = 400,
   isMobile = false,
@@ -99,6 +102,11 @@ const PriceChart = ({
   const bottomPadding = isMobile ? 100 : 80; // More space for mobile legend
   const chartWidth = width - 2 * horizontalPadding;
   const chartHeight = height - topPadding - bottomPadding;
+  const legendWidth = isMobile
+    ? Math.min(520, chartWidth - 20)
+    : chartWidth - 20;
+  const bubbleLegendX = isMobile ? 10 : legendWidth - 120;
+  const bubbleLegendY = isMobile ? 32 : 15;
 
   // Combine all data to find min/max values
   const allData = [
@@ -107,6 +115,7 @@ const PriceChart = ({
     ...arbitrumData,
     ...baseData,
     ...optimismData,
+    ...polygonData,
   ];
   if (allData.length === 0) return null;
 
@@ -177,6 +186,7 @@ const PriceChart = ({
   const arbitrumPath = createPath(arbitrumData);
   const basePath = createPath(baseData);
   const optimismPath = createPath(optimismData);
+  const polygonPath = createPath(polygonData);
 
   // Y-axis ticks (maximum ticks for ultra-fine granularity)
   const yTicks = [];
@@ -350,6 +360,15 @@ const PriceChart = ({
             opacity="0.8"
           />
         )}
+        {polygonPath && (
+          <path
+            d={polygonPath}
+            fill="none"
+            stroke="#a855f7"
+            strokeWidth="2"
+            opacity="0.8"
+          />
+        )}
 
         {/* Data points - bubble size based on swap amount */}
         {ethData.map((point, index) => (
@@ -431,14 +450,29 @@ const PriceChart = ({
             <title>{`Optimism: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
           </circle>
         ))}
+        {polygonData.map((point, index) => (
+          <circle
+            key={`polygon-${index}`}
+            cx={scaleX(point.timestamp)}
+            cy={scaleY(point.price)}
+            r={scaleBubbleSize(point.amountUSD)}
+            fill="#a855f7"
+            opacity="0.7"
+            stroke="#a855f7"
+            strokeWidth="1"
+            strokeOpacity="0.9"
+          >
+            <title>{`Polygon: ${formatPrice(point.price)} | ${formatUSD(point.amountUSD)}`}</title>
+          </circle>
+        ))}
 
         {/* Legend - positioned at bottom to avoid covering data */}
         <g
           transform={`translate(${horizontalPadding + 10}, ${height - (isMobile ? 60 : 40)})`}
         >
           <rect
-            width={isMobile ? Math.min(520, chartWidth - 20) : "620"}
-            height={isMobile ? "40" : "25"}
+            width={legendWidth}
+            height={isMobile ? 40 : 35}
             fill="rgba(0,0,0,0.1)"
             rx="4"
           />
@@ -528,26 +562,26 @@ const PriceChart = ({
                   fill="currentColor"
                   opacity="0.7"
                 >
-                  Bubble size = Volume
+                  Volume
                 </text>
                 <circle
-                  cx="90"
-                  cy="5"
-                  r="1"
-                  fill="currentColor"
-                  opacity="0.5"
-                />
-                <circle
-                  cx="95"
-                  cy="5"
+                  cx="60"
+                  cy="8"
                   r="2"
                   fill="currentColor"
                   opacity="0.5"
                 />
                 <circle
-                  cx="102"
-                  cy="5"
-                  r="3"
+                  cx="74"
+                  cy="8"
+                  r="4"
+                  fill="currentColor"
+                  opacity="0.5"
+                />
+                <circle
+                  cx="94"
+                  cy="8"
+                  r="6"
                   fill="currentColor"
                   opacity="0.5"
                 />
@@ -626,37 +660,32 @@ const PriceChart = ({
                 Optimism
               </text>
 
-              {/* Bubble size explanation */}
+              {/* Polygon */}
+              <line
+                x1="430"
+                y1="15"
+                x2="445"
+                y2="15"
+                stroke="#a855f7"
+                strokeWidth="2"
+              />
+              <circle cx="437.5" cy="15" r="3" fill="#a855f7" />
+              <text x="450" y="18" fontSize="11" fill="currentColor">
+                Polygon
+              </text>
+              {/* Bubble size explanation on second row */}
               <text
-                x="450"
-                y="12"
+                x="10"
+                y="28"
                 fontSize="10"
                 fill="currentColor"
                 opacity="0.7"
               >
-                Bubble size = Swap volume
+                Volume
               </text>
-              <circle
-                cx="460"
-                cy="20"
-                r="2"
-                fill="currentColor"
-                opacity="0.5"
-              />
-              <circle
-                cx="470"
-                cy="20"
-                r="4"
-                fill="currentColor"
-                opacity="0.5"
-              />
-              <circle
-                cx="485"
-                cy="20"
-                r="6"
-                fill="currentColor"
-                opacity="0.5"
-              />
+              <circle cx="60" cy="28" r="2" fill="currentColor" opacity="0.5" />
+              <circle cx="74" cy="28" r="4" fill="currentColor" opacity="0.5" />
+              <circle cx="94" cy="28" r="6" fill="currentColor" opacity="0.5" />
             </>
           )}
         </g>
@@ -666,6 +695,8 @@ const PriceChart = ({
 };
 
 export function ArbitrageSummary() {
+  const [pair, setPair] = useState<ArbitragePair>("ETH_USDC");
+
   const {
     pools,
     swaps,
@@ -677,12 +708,14 @@ export function ArbitrageSummary() {
     arbitrumPool,
     basePool,
     optimismPool,
+    polygonPool,
     ethChartData,
     unichainChartData,
     arbitrumChartData,
     baseChartData,
     optimismChartData,
-  } = useArbitrage();
+    polygonChartData,
+  } = useArbitrage(pair);
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -705,10 +738,12 @@ export function ArbitrageSummary() {
   const arbitrumPriceValue = useMotionValue(0);
   const basePriceValue = useMotionValue(0);
   const optimismPriceValue = useMotionValue(0);
+  const polygonPriceValue = useMotionValue(0);
   const ethToUnichainValue = useMotionValue(0);
   const ethToArbitrumValue = useMotionValue(0);
   const ethToBaseValue = useMotionValue(0);
   const ethToOptimismValue = useMotionValue(0);
+  const ethToPolygonValue = useMotionValue(0);
   const maxDifferenceValue = useMotionValue(0);
 
   // Transform motion values to formatted strings
@@ -721,6 +756,9 @@ export function ArbitrageSummary() {
   );
   const basePriceDisplay = useTransform(basePriceValue, (v) => formatPrice(v));
   const optimismPriceDisplay = useTransform(optimismPriceValue, (v) =>
+    formatPrice(v)
+  );
+  const polygonPriceDisplay = useTransform(polygonPriceValue, (v) =>
     formatPrice(v)
   );
   const ethToUnichainDisplay = useTransform(
@@ -737,6 +775,10 @@ export function ArbitrageSummary() {
   );
   const ethToOptimismDisplay = useTransform(
     ethToOptimismValue,
+    (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+  );
+  const ethToPolygonDisplay = useTransform(
+    ethToPolygonValue,
     (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
   );
   const maxDifferenceDisplay = useTransform(
@@ -769,6 +811,10 @@ export function ArbitrageSummary() {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
     });
+    animate(polygonPriceValue, (priceDifferences as any).polygonPrice || 0, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
     animate(ethToUnichainValue, priceDifferences.ethToUnichain, {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
@@ -785,6 +831,10 @@ export function ArbitrageSummary() {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
     });
+    animate(ethToPolygonValue, (priceDifferences as any).ethToPolygon || 0, {
+      duration: 0.8,
+      ease: [0.32, 0.72, 0, 1],
+    });
     animate(maxDifferenceValue, priceDifferences.maxDifference, {
       duration: 0.8,
       ease: [0.32, 0.72, 0, 1],
@@ -796,10 +846,12 @@ export function ArbitrageSummary() {
     arbitrumPriceValue,
     basePriceValue,
     optimismPriceValue,
+    polygonPriceValue,
     ethToUnichainValue,
     ethToArbitrumValue,
     ethToBaseValue,
     ethToOptimismValue,
+    ethToPolygonValue,
     maxDifferenceValue,
   ]);
 
@@ -835,14 +887,39 @@ export function ArbitrageSummary() {
       {/* Header */}
       <div className="text-center space-y-1">
         <h2 className={`font-bold ${isMobile ? "text-xl" : "text-2xl"}`}>
-          Multi-Chain ETH/USDC Price Arbitrage
+          Multi-Chain {pair === "ETH_USDC" ? "ETH/USDC" : "WBTC/USD"} Price
+          Arbitrage
         </h2>
         <p
           className={`text-muted-foreground ${isMobile ? "text-xs" : "text-sm"}`}
         >
-          Real-time price comparison across Ethereum, Unichain, Arbitrum, Base,
-          and Optimism networks for ETH/USDC pools
+          {pair === "ETH_USDC"
+            ? "Real-time price comparison across Ethereum, Unichain, Arbitrum, Base, and Optimism"
+            : "Real-time price comparison across Ethereum, Unichain, Arbitrum, and Polygon"}
         </p>
+        {/* Pair Toggle */}
+        <div className="flex items-center justify-center gap-2 mt-2">
+          <button
+            onClick={() => setPair("ETH_USDC")}
+            className={`px-3 py-1 rounded-md text-sm border ${
+              pair === "ETH_USDC"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background hover:bg-secondary"
+            }`}
+          >
+            ETH / USDC
+          </button>
+          <button
+            onClick={() => setPair("WBTC_USD")}
+            className={`px-3 py-1 rounded-md text-sm border ${
+              pair === "WBTC_USD"
+                ? "bg-primary text-primary-foreground"
+                : "bg-background hover:bg-secondary"
+            }`}
+          >
+            WBTC / USD
+          </button>
+        </div>
       </div>
 
       {/* Price Chart */}
@@ -850,7 +927,8 @@ export function ArbitrageSummary() {
         unichainChartData ||
         arbitrumChartData ||
         baseChartData ||
-        optimismChartData) && (
+        optimismChartData ||
+        polygonChartData) && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -908,6 +986,14 @@ export function ArbitrageSummary() {
                     <span className={isMobile ? "text-xs" : ""}>OP</span>
                   </div>
                 )}
+                {polygonChartData && polygonChartData.length > 0 && (
+                  <div className="flex items-center gap-1">
+                    <div
+                      className={`rounded-full bg-purple-500 ${isMobile ? "w-2 h-2" : "w-3 h-3"}`}
+                    ></div>
+                    <span className={isMobile ? "text-xs" : ""}>POLY</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -918,6 +1004,7 @@ export function ArbitrageSummary() {
               arbitrumData={arbitrumChartData || []}
               baseData={baseChartData || []}
               optimismData={optimismChartData || []}
+              polygonData={polygonChartData || []}
               width={isMobile ? 350 : 700}
               height={isMobile ? 300 : 500}
               isMobile={isMobile}
@@ -978,44 +1065,77 @@ export function ArbitrageSummary() {
                           priceDisplay: optimismPriceDisplay,
                           percentageDisplay: ethToOptimismDisplay,
                         };
+                      case "Polygon":
+                        return {
+                          priceDisplay: polygonPriceDisplay,
+                          percentageDisplay: ethToPolygonDisplay,
+                        };
                       default:
                         return { priceDisplay: null, percentageDisplay: null };
                     }
                   };
 
                   // Create array of chains with their data for sorting
-                  const chains = [
-                    {
-                      name: "Ethereum",
-                      price: priceDifferences.ethPrice,
-                      color: "text-gray-500",
-                      pool: ethPool,
-                    },
-                    {
-                      name: "Unichain",
-                      price: priceDifferences.unichainPrice,
-                      color: "text-pink-500",
-                      pool: unichainPool,
-                    },
-                    {
-                      name: "Arbitrum",
-                      price: priceDifferences.arbitrumPrice,
-                      color: "text-orange-500",
-                      pool: arbitrumPool,
-                    },
-                    {
-                      name: "Base",
-                      price: priceDifferences.basePrice,
-                      color: "text-blue-500",
-                      pool: basePool,
-                    },
-                    {
-                      name: "Optimism",
-                      price: priceDifferences.optimismPrice,
-                      color: "text-red-600",
-                      pool: optimismPool,
-                    },
-                  ];
+                  const chains =
+                    pair === "ETH_USDC"
+                      ? [
+                          {
+                            name: "Ethereum",
+                            price: priceDifferences.ethPrice,
+                            color: "text-gray-500",
+                            pool: ethPool,
+                          },
+                          {
+                            name: "Unichain",
+                            price: priceDifferences.unichainPrice,
+                            color: "text-pink-500",
+                            pool: unichainPool,
+                          },
+                          {
+                            name: "Arbitrum",
+                            price: priceDifferences.arbitrumPrice,
+                            color: "text-orange-500",
+                            pool: arbitrumPool,
+                          },
+                          {
+                            name: "Base",
+                            price: priceDifferences.basePrice,
+                            color: "text-blue-500",
+                            pool: basePool,
+                          },
+                          {
+                            name: "Optimism",
+                            price: priceDifferences.optimismPrice,
+                            color: "text-red-600",
+                            pool: optimismPool,
+                          },
+                        ]
+                      : [
+                          {
+                            name: "Ethereum",
+                            price: priceDifferences.ethPrice,
+                            color: "text-gray-500",
+                            pool: ethPool,
+                          },
+                          {
+                            name: "Unichain",
+                            price: priceDifferences.unichainPrice,
+                            color: "text-pink-500",
+                            pool: unichainPool,
+                          },
+                          {
+                            name: "Arbitrum",
+                            price: priceDifferences.arbitrumPrice,
+                            color: "text-orange-500",
+                            pool: arbitrumPool,
+                          },
+                          {
+                            name: "Polygon",
+                            price: (priceDifferences as any).polygonPrice,
+                            color: "text-purple-500",
+                            pool: polygonPool,
+                          },
+                        ];
 
                   // Sort by price (highest first)
                   const sortedChains = chains.sort((a, b) => b.price - a.price);
@@ -1201,6 +1321,12 @@ export function ArbitrageSummary() {
                       <span>Optimism</span>
                     </div>
                   )}
+                  {polygonChartData && polygonChartData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                      <span>Polygon</span>
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => setIsFullscreen(false)}
@@ -1220,6 +1346,7 @@ export function ArbitrageSummary() {
                 arbitrumData={arbitrumChartData || []}
                 baseData={baseChartData || []}
                 optimismData={optimismChartData || []}
+                polygonData={polygonChartData || []}
                 width={1200}
                 height={900}
                 isMobile={false}

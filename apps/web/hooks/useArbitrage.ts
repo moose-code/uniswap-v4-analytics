@@ -52,13 +52,24 @@ interface SwapsResponse {
   Swap: Swap[];
 }
 
-// The specific pool IDs we want to track for arbitrage
-const ARBITRAGE_POOL_IDS = [
+// Supported pairs
+export type ArbitragePair = "ETH_USDC" | "WBTC_USD";
+
+// Pool IDs per pair
+const ETH_USDC_POOL_IDS = [
   "1_0x21c67e77068de97969ba93d4aab21826d33ca12bb9f565d8496e8fda8a82ca27", // Ethereum ETH/USDC
   "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9", // Unichain ETH/USDC
   "42161_0x864abca0a6202dba5b8868772308da953ff125b0f95015adbf89aaf579e903a8", // Arbitrum ETH/USDC
   "8453_0x96d4b53a38337a5733179751781178a2613306063c511b78cd02684739288c0a", // Base ETH/USDC
   "10_0x51bf4cc5b8d9f7f759e41f572fe2a25bc2aeb42432bf12544a350595e5c8bb43", // Optimism ETH/USDC
+];
+
+// WBTC/USD pools provided by user
+const WBTC_USD_POOL_IDS = [
+  "130_0xbd0f3a7cf4cf5f48ebe850474c8c0012fa5fe893ab811a8b8743a52b83aa8939", // Unichain WBTC/USD
+  "42161_0x80c735c5a0222241f211b3edb8df2ccefad94553ec18f1c29143f0399c78f500", // Arbitrum WBTC/USD
+  "1_0x3ea74c37fbb79dfcd6d760870f0f4e00cf4c3960b3259d0d43f211c0547394c1", // Ethereum WBTC/USD
+  "137_0xcb43e7be737de625e6799cd593d9ec2c1285a64261dc715ea1bdcd42735f6cbc", // Polygon WBTC/USD
 ];
 
 // Helper function to calculate price from sqrtPriceX96
@@ -102,7 +113,7 @@ const processSwapsForChart = (
   });
 };
 
-export function useArbitrage() {
+export function useArbitrage(pair: ArbitragePair = "ETH_USDC") {
   const [pools, setPools] = useState<Pool[]>([]);
   const [swaps, setSwaps] = useState<Swap[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -113,16 +124,33 @@ export function useArbitrage() {
       try {
         setLoading(true);
 
-        // Fetch specific pools
+        const poolIds =
+          pair === "ETH_USDC" ? ETH_USDC_POOL_IDS : WBTC_USD_POOL_IDS;
+
+        // Fetch specific pools first
         const poolsData = await graphqlClient.request<PoolsResponse>(
           SPECIFIC_POOLS_QUERY,
-          { poolIds: ARBITRAGE_POOL_IDS }
+          { poolIds }
         );
 
-        // Fetch recent swaps for these pools
+        // Only fetch swaps for pools that actually exist
+        const existingPoolIds = poolsData.Pool.map((pool) => pool.id);
+
+        if (existingPoolIds.length === 0) {
+          setPools([]);
+          setSwaps([]);
+          setError(
+            pair === "WBTC_USD"
+              ? "WBTC/USD pools not available yet"
+              : "No pools found"
+          );
+          return;
+        }
+
+        // Fetch recent swaps for existing pools only
         const swapsData = await graphqlClient.request<SwapsResponse>(
           ARBITRAGE_SWAPS_QUERY,
-          { poolIds: ARBITRAGE_POOL_IDS }
+          { poolIds: existingPoolIds }
         );
 
         setPools(poolsData.Pool);
@@ -130,7 +158,11 @@ export function useArbitrage() {
         setError(null);
       } catch (err) {
         console.error("Error fetching arbitrage data:", err);
-        setError("Failed to fetch arbitrage data");
+        setError(
+          pair === "WBTC_USD"
+            ? "WBTC/USD data temporarily unavailable"
+            : "Failed to fetch arbitrage data"
+        );
       } finally {
         setLoading(false);
       }
@@ -143,7 +175,7 @@ export function useArbitrage() {
     const interval = setInterval(fetchData, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [pair]);
 
   // Get pools by chain
   const ethPool = pools.find((p) => p.chainId === "1");
@@ -151,6 +183,7 @@ export function useArbitrage() {
   const arbitrumPool = pools.find((p) => p.chainId === "42161");
   const basePool = pools.find((p) => p.chainId === "8453");
   const optimismPool = pools.find((p) => p.chainId === "10");
+  const polygonPool = pools.find((p) => p.chainId === "137");
 
   // Process swaps into chart data for all chains
   const ethChartData = processSwapsForChart(swaps, "1", 20);
@@ -158,6 +191,7 @@ export function useArbitrage() {
   const arbitrumChartData = processSwapsForChart(swaps, "42161", 20);
   const baseChartData = processSwapsForChart(swaps, "8453", 20);
   const optimismChartData = processSwapsForChart(swaps, "10", 20);
+  const polygonChartData = processSwapsForChart(swaps, "137", 20);
 
   // Get current prices from most recent swaps for all chains
   const getCurrentPrice = (chartData: any[]) => {
@@ -170,38 +204,46 @@ export function useArbitrage() {
   const arbitrumPrice = getCurrentPrice(arbitrumChartData);
   const basePrice = getCurrentPrice(baseChartData);
   const optimismPrice = getCurrentPrice(optimismChartData);
+  const polygonPrice = getCurrentPrice(polygonChartData);
 
   // Calculate price differences (using ETH as base for comparison)
   const priceDifferences =
     ethPrice > 0
-      ? {
-          ethPrice,
-          unichainPrice,
-          arbitrumPrice,
-          basePrice,
-          optimismPrice,
-          ethToUnichain: ((ethPrice - unichainPrice) / ethPrice) * 100,
-          ethToArbitrum: ((ethPrice - arbitrumPrice) / ethPrice) * 100,
-          ethToBase: ((ethPrice - basePrice) / ethPrice) * 100,
-          ethToOptimism: ((ethPrice - optimismPrice) / ethPrice) * 100,
-          maxDifference: (() => {
-            // Find maximum difference between ANY two pools
-            const prices = [
-              ethPrice,
-              unichainPrice,
-              arbitrumPrice,
-              basePrice,
-              optimismPrice,
-            ].filter((p) => p > 0);
-            if (prices.length < 2) return 0;
+      ? (() => {
+          const comparisonPrices =
+            pair === "ETH_USDC"
+              ? [
+                  ethPrice,
+                  unichainPrice,
+                  arbitrumPrice,
+                  basePrice,
+                  optimismPrice,
+                ]
+              : [ethPrice, unichainPrice, arbitrumPrice, polygonPrice];
 
+          const maxDifference = (() => {
+            const prices = comparisonPrices.filter((p) => p > 0);
+            if (prices.length < 2) return 0;
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
-
-            // Calculate percentage difference between min and max prices
             return ((maxPrice - minPrice) / minPrice) * 100;
-          })(),
-        }
+          })();
+
+          return {
+            ethPrice,
+            unichainPrice,
+            arbitrumPrice,
+            basePrice,
+            optimismPrice,
+            polygonPrice,
+            ethToUnichain: ((ethPrice - unichainPrice) / ethPrice) * 100,
+            ethToArbitrum: ((ethPrice - arbitrumPrice) / ethPrice) * 100,
+            ethToBase: ((ethPrice - basePrice) / ethPrice) * 100,
+            ethToOptimism: ((ethPrice - optimismPrice) / ethPrice) * 100,
+            ethToPolygon: ((ethPrice - polygonPrice) / ethPrice) * 100,
+            maxDifference,
+          };
+        })()
       : null;
 
   return {
@@ -215,10 +257,12 @@ export function useArbitrage() {
     arbitrumPool,
     basePool,
     optimismPool,
+    polygonPool,
     ethChartData,
     unichainChartData,
     arbitrumChartData,
     baseChartData,
     optimismChartData,
+    polygonChartData,
   };
 }
