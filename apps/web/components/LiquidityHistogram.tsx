@@ -36,44 +36,50 @@ export function LiquidityHistogram({
   return (
     <div className="border border-border/50 rounded-md p-3 bg-secondary/5">
       {/* Controls */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-4">
-          <button
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              !showTicks
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setShowTicks(false)}
-          >
-            Price
-          </button>
-          <button
-            className={`px-2 py-1 text-xs rounded transition-colors ${
-              showTicks
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            onClick={() => setShowTicks(true)}
-          >
-            Ticks
-          </button>
-        </div>
-
+      <div className="flex items-center justify-end mb-3">
         {onTickRangeChange && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Range:</span>
-            <select
-              className="text-xs bg-background border border-border/50 rounded px-2 py-1"
-              value={tickRange}
-              onChange={(e) => onTickRangeChange(parseInt(e.target.value))}
-            >
-              <option value={20}>20 ticks</option>
-              <option value={40}>40 ticks</option>
-              <option value={60}>60 ticks</option>
-              <option value={100}>100 ticks</option>
-              <option value={200}>200 ticks</option>
-            </select>
+          <div className="flex items-center gap-3">
+            {/* Price/Ticks Toggle */}
+            <div className="flex items-center bg-secondary/20 rounded-md p-0.5">
+              <button
+                className={`px-2 py-1 text-xs rounded transition-all ${
+                  !showTicks
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setShowTicks(false)}
+              >
+                Price
+              </button>
+              <button
+                className={`px-2 py-1 text-xs rounded transition-all ${
+                  showTicks
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setShowTicks(true)}
+              >
+                Ticks
+              </button>
+            </div>
+
+            {/* Range Selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Range:</span>
+              <select
+                className="text-xs bg-background border border-border/50 rounded px-2 py-1"
+                value={tickRange}
+                onChange={(e) => onTickRangeChange(parseInt(e.target.value))}
+              >
+                <option value={20}>20</option>
+                <option value={40}>40</option>
+                <option value={60}>60</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+                <option value={500}>500</option>
+                <option value={1000}>1000</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
