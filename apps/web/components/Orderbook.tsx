@@ -193,6 +193,8 @@ export function Orderbook() {
         netLiquidity: number;
         grossLiquidity: number;
         usdValueGross: number | null;
+        amount0: number | null;
+        amount1: number | null;
       }[];
 
     const token0Decimals = parseInt(
@@ -203,36 +205,98 @@ export function Orderbook() {
       (tokens[pool.token1]?.decimals as string) ?? "18",
       10
     );
+    const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
     const priceToken0InToken1FromTick = (tick: number) => {
       const ratio = Math.pow(1.0001, tick);
       return ratio * Math.pow(10, token0Decimals - token1Decimals);
     };
+
+    // Step 1: cumulative sum of liquidityNet across fetched ticks (raw, unanchored)
+    const sortedTicks = [...ticks].sort(
+      (a, b) => parseInt(a.tickIdx, 10) - parseInt(b.tickIdx, 10)
+    );
+    let runningL = 0;
+    const rawCumLByTick = new Map<number, number>();
+    for (const t of sortedTicks) {
+      const idx = parseInt(t.tickIdx, 10);
+      const net = parseFloat(t.liquidityNet || "0");
+      runningL += net;
+      rawCumLByTick.set(idx, runningL);
+    }
+
+    // Step 2: anchor to pool.liquidity at the active tick boundary using an offset
+    const poolLiquidity = parseFloat(pool.liquidity || "0");
+    const activeTick =
+      Math.floor(parseInt(pool.tick as string, 10) / spacing) * spacing;
+    // find raw cumulative L at the greatest tick <= activeTick
+    let rawAtActive = 0;
+    for (const idx of Array.from(rawCumLByTick.keys()).sort((a, b) => a - b)) {
+      if (idx <= activeTick) {
+        rawAtActive = rawCumLByTick.get(idx) || 0;
+      } else {
+        break;
+      }
+    }
+    const offset = poolLiquidity - rawAtActive;
+
+    // Final anchored active liquidity per tick boundary
+    const activeLiquidityByTick = new Map<number, number>();
+    for (const [idx, rawL] of rawCumLByTick.entries()) {
+      activeLiquidityByTick.set(idx, rawL + offset);
+    }
+
+    const currentP = currentPrice;
+    const sp = isFinite(currentP) && currentP > 0 ? Math.sqrt(currentP) : null;
 
     return ticks.map((t) => {
       const tickIdx = parseInt(t.tickIdx, 10);
       const price = priceToken0InToken1FromTick(tickIdx);
       const netLiquidity = parseFloat(t.liquidityNet || "0");
       const grossLiquidity = parseFloat(t.liquidityGross || "0");
-      // Estimate USD value across one tick range using liquidity and sqrt price delta
+      // Compute USD depth across [tickIdx, tickIdx + spacing) using ACTIVE L
       let usdValueGross: number | null = null;
-      if (
-        token0USD != null &&
-        token1USD != null &&
-        isFinite(price) &&
-        grossLiquidity > 0
-      ) {
+      let amount0: number | null = null;
+      let amount1: number | null = null;
+      const L = activeLiquidityByTick.get(tickIdx) ?? poolLiquidity; // fallback to pool L if absent
+      if (token0USD != null && token1USD != null && isFinite(price) && L > 0) {
         const pA = price;
-        const pB = priceToken0InToken1FromTick(tickIdx + 1);
+        const pB = priceToken0InToken1FromTick(tickIdx + spacing);
         const sA = Math.sqrt(pA);
         const sB = Math.sqrt(pB);
-        const deltaS = sB - sA;
-        if (deltaS > 0 && isFinite(deltaS) && sA > 0 && sB > 0) {
-          const amount0 = grossLiquidity * (deltaS / (sA * sB));
-          const amount1 = grossLiquidity * deltaS;
-          usdValueGross = amount0 * token0USD + amount1 * token1USD;
+        if (isFinite(sA) && isFinite(sB) && sA > 0 && sB > 0 && sB > sA) {
+          let a0 = 0;
+          let a1 = 0;
+          if (sp == null) {
+            // Fallback: treat as outside interval; pick midpoint branch to avoid NaN
+            a0 = 0;
+            a1 = L * (sB - sA);
+          } else if (sp <= sA) {
+            // Entirely below: all token0
+            a0 = (L * (sB - sA)) / (sA * sB);
+            a1 = 0;
+          } else if (sp >= sB) {
+            // Entirely above: all token1
+            a0 = 0;
+            a1 = L * (sB - sA);
+          } else {
+            // Inside the active interval
+            a0 = (L * (sB - sp)) / (sp * sB);
+            a1 = L * (sp - sA);
+          }
+          amount0 = a0;
+          amount1 = a1;
+          usdValueGross = a0 * token0USD + a1 * token1USD;
         }
       }
-      return { tickIdx, price, netLiquidity, grossLiquidity, usdValueGross };
+      return {
+        tickIdx,
+        price,
+        netLiquidity,
+        grossLiquidity,
+        usdValueGross,
+        amount0,
+        amount1,
+      };
     });
   }, [ticks, pool, tokens, token1USD]);
   const lastPriceUSD = useMemo(() => {
@@ -241,6 +305,66 @@ export function Orderbook() {
     if (!isFinite(p) || p <= 0) return null;
     return p * token1USD;
   }, [token1USD, currentPrice]);
+
+  // Compute the active tick index based on current tick and spacing
+  const activeTickIdx = useMemo(() => {
+    if (!pool || pool.tick == null || pool.tickSpacing == null)
+      return null as number | null;
+    const currentTick = parseInt(pool.tick as string, 10);
+    const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
+    return Math.floor(currentTick / spacing) * spacing;
+  }, [pool]);
+
+  // Limit the displayed rows to ~20 centered around the active tick
+  const displayTickRows = useMemo(() => {
+    if (!tickRows.length) return tickRows;
+    if (activeTickIdx == null || !pool) return tickRows;
+    const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
+    const halfWindow = 10; // ~20 rows total
+    const minTick = activeTickIdx - spacing * halfWindow;
+    const maxTick = activeTickIdx + spacing * (halfWindow - 1); // keeps ~20 including active
+    const filtered = tickRows.filter(
+      (r) => r.tickIdx >= minTick && r.tickIdx <= maxTick
+    );
+    // If more than 20 for any reason, trim to 20 centered around active
+    if (filtered.length > 20) {
+      // Ensure active is within slice
+      const activeIndex = filtered.findIndex(
+        (r) => r.tickIdx === activeTickIdx
+      );
+      const start = Math.max(
+        0,
+        Math.min(activeIndex - 10, filtered.length - 20)
+      );
+      return filtered.slice(start, start + 20);
+    }
+    return filtered;
+  }, [tickRows, activeTickIdx, pool]);
+
+  // Prepare histogram bars for currently displayed rows
+  const histogramBars = useMemo(() => {
+    if (!displayTickRows.length)
+      return [] as {
+        tickIdx: number;
+        usd0: number;
+        usd1: number;
+        usdTotal: number;
+      }[];
+    const usdBars = displayTickRows.map((r) => {
+      const usd0 =
+        r.amount0 != null && token0USD != null ? r.amount0 * token0USD : 0;
+      const usd1 =
+        r.amount1 != null && token1USD != null ? r.amount1 * token1USD : 0;
+      const usdTotal = usd0 + usd1;
+      return { tickIdx: r.tickIdx, usd0, usd1, usdTotal };
+    });
+    return usdBars;
+  }, [displayTickRows, token0USD, token1USD]);
+
+  const histogramMaxUSD = useMemo(() => {
+    if (!histogramBars.length) return 0;
+    return histogramBars.reduce((m, b) => (b.usdTotal > m ? b.usdTotal : m), 0);
+  }, [histogramBars]);
 
   return (
     <div className="space-y-4">
@@ -437,16 +561,16 @@ export function Orderbook() {
         <div className="border border-border/50 rounded-md overflow-hidden">
           <div
             className="grid text-xs px-2 py-1 bg-secondary/40"
-            style={{ gridTemplateColumns: "70px 90px 160px 160px 160px" }}
+            style={{ gridTemplateColumns: "70px 90px 160px 160px 220px" }}
           >
             <div>Tick</div>
             <div className="text-right">Price</div>
             <div className="text-right">Net</div>
             <div className="text-right">Gross</div>
-            <div className="text-right">Gross USD</div>
+            <div className="text-right">USD</div>
           </div>
-          <div className="max-h-96 overflow-y-auto">
-            {tickRows.map((row) => {
+          <div className="max-h-72 overflow-y-auto">
+            {displayTickRows.map((row) => {
               const isCurrentTick = (() => {
                 if (!pool || pool.tick == null || pool.tickSpacing == null)
                   return false;
@@ -463,7 +587,7 @@ export function Orderbook() {
                       ? "bg-yellow-400/30 border-l-4 border-yellow-500 font-semibold text-yellow-900 dark:text-yellow-100"
                       : "hover:bg-secondary/20"
                   }`}
-                  style={{ gridTemplateColumns: "70px 90px 160px 160px 160px" }}
+                  style={{ gridTemplateColumns: "70px 90px 160px 160px 220px" }}
                 >
                   <div>{row.tickIdx}</div>
                   <div className="text-right">
@@ -488,6 +612,51 @@ export function Orderbook() {
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* Histogram of per-interval USD liquidity (token0 vs token1) */}
+      <div>
+        <div className="text-xs mb-2">Depth by Tick (USD)</div>
+        <div className="border border-border/50 rounded-md p-2">
+          {histogramBars.length ? (
+            <div className="flex items-end gap-1 h-40">
+              {histogramBars.map((b) => {
+                const total = histogramMaxUSD || 1;
+                const heightPct = Math.max(
+                  0,
+                  Math.min(100, (b.usdTotal / total) * 100)
+                );
+                const ethPct = b.usdTotal > 0 ? (b.usd0 / b.usdTotal) * 100 : 0;
+                const usdcPct = 100 - ethPct;
+                const isActive =
+                  activeTickIdx != null && b.tickIdx === activeTickIdx;
+                return (
+                  <div key={`bar-${b.tickIdx}`} className="flex-1 min-w-[6px]">
+                    <div
+                      className={`relative w-full rounded-sm overflow-hidden ${isActive ? "ring-2 ring-yellow-500" : ""}`}
+                      style={{ height: `${heightPct}%` }}
+                      title={`${b.tickIdx}: $${b.usdTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-emerald-500/70"
+                        style={{ height: `${ethPct}%` }}
+                      />
+                      <div
+                        className="absolute top-0 left-0 right-0 bg-blue-500/70"
+                        style={{ height: `${usdcPct}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-center mt-1 text-muted-foreground">
+                      {b.tickIdx}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground">No data</div>
+          )}
         </div>
       </div>
     </div>
