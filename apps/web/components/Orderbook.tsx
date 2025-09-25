@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import {
   graphqlClient,
   POOL_BY_ID_QUERY,
   TOKENS_BY_IDS_QUERY,
   TICKS_BY_POOL_RANGE_QUERY,
   BUNDLE_QUERY,
+  RECENT_SWAPS_BY_POOL_QUERY,
+  RECENT_MODIFY_LIQUIDITY_QUERY,
 } from "@/lib/graphql";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Copy, ExternalLink } from "lucide-react";
 
 type Pool = {
   id: string;
@@ -62,7 +65,512 @@ type Tick = {
 };
 
 const DEFAULT_POOL_ID =
-  "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9";
+  "1_0x20c3a15e34e5d88aeba004b0753af69e4f6bea80eae2263f7a92e919cd33cc56";
+
+// Helper functions from Pulse page
+const formatUSD = (value: string): string => {
+  const num = parseFloat(value);
+  if (num >= 1_000_000) {
+    return `$${(num / 1_000_000).toFixed(2)}M`;
+  } else if (num >= 1_000) {
+    return `$${(num / 1_000).toFixed(2)}K`;
+  } else {
+    return `$${num.toFixed(2)}`;
+  }
+};
+
+const formatTokenAmount = (amount: string, decimals: string): string => {
+  const num = parseFloat(amount);
+  const absNum = Math.abs(num);
+  const sign = num < 0 ? "-" : "";
+  const decimalPlaces = parseInt(decimals) || 18;
+
+  let displayDecimals = 2;
+  if (absNum < 0.01) displayDecimals = 4;
+  if (absNum < 0.0001) displayDecimals = 6;
+
+  if (absNum >= 1_000_000) {
+    return `${sign}${(absNum / 1_000_000).toFixed(2)}M`;
+  } else if (absNum >= 1_000) {
+    return `${sign}${(absNum / 1_000).toFixed(2)}K`;
+  } else if (absNum === 0) {
+    return "0";
+  } else {
+    return `${sign}${absNum.toFixed(Math.min(displayDecimals, decimalPlaces))}`;
+  }
+};
+
+const NETWORK_NAMES: Record<string, string> = {
+  "1": "Ethereum",
+  "10": "Optimism",
+  "137": "Polygon",
+  "42161": "Arbitrum",
+  "8453": "Base",
+  "81457": "Blast",
+  "7777777": "Zora",
+  "56": "BSC",
+  "43114": "Avalanche",
+  "57073": "Ink",
+  "1868": "Soneium",
+  "130": "Unichain",
+  "480": "Worldchain",
+};
+
+const extractChainId = (id: string): string => {
+  if (id.includes("_")) {
+    const chainId = id.split("_")[0];
+    return chainId || id;
+  }
+  return id;
+};
+
+const generateUniqueId = (eventId: string): string => {
+  const timestamp = Date.now();
+  const nanoTime =
+    typeof performance !== "undefined"
+      ? performance.now().toString().replace(".", "")
+      : "0";
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${eventId}_${timestamp}_${nanoTime}_${random}`;
+};
+
+const getBlockExplorerUrl = (chainId: string, txHash: string): string => {
+  const explorers: Record<string, string> = {
+    "1": "https://etherscan.io/tx/",
+    "10": "https://optimistic.etherscan.io/tx/",
+    "137": "https://polygonscan.com/tx/",
+    "42161": "https://arbiscan.io/tx/",
+    "8453": "https://basescan.org/tx/",
+    "81457": "https://blastscan.io/tx/",
+    "7777777": "https://explorer.zora.energy/tx/",
+    "56": "https://bscscan.com/tx/",
+    "43114": "https://snowtrace.io/tx/",
+    "57073": "https://inkscan.io/tx/",
+    "1868": "https://sonscan.io/tx/",
+    "130": "https://uniscan.xyz/tx/",
+  };
+  const baseUrl = explorers[chainId] || "https://etherscan.io/tx/";
+  return `${baseUrl}${txHash}`;
+};
+
+const copyToClipboard = (text: string) => {
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      console.log("Copied to clipboard:", text);
+    })
+    .catch((err) => {
+      console.error("Failed to copy:", err);
+    });
+};
+
+// Pool-specific Recent Swaps Component
+function PoolRecentSwaps({ poolId }: { poolId: string }) {
+  const [swaps, setSwaps] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        const data = await graphqlClient.request<{ Swap: any[] }>(
+          RECENT_SWAPS_BY_POOL_QUERY,
+          {
+            poolId,
+            limit: 20,
+          }
+        );
+
+        if (!isMounted) return;
+
+        const swapsWithIds = data.Swap.map((swap: any) => ({
+          ...swap,
+          uniqueId: generateUniqueId(swap.id),
+        }));
+
+        setSwaps(swapsWithIds);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching pool swaps:", err);
+        if (isMounted) {
+          setError("Failed to fetch swaps");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    const intervalId = setInterval(fetchData, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [poolId]);
+
+  const getSwapTimestamp = (timestamp: string) => {
+    const swapTime = new Date(parseInt(timestamp) * 1000);
+    const now = new Date();
+    const diffSeconds = Math.floor((now.getTime() - swapTime.getTime()) / 1000);
+
+    if (diffSeconds < 5) {
+      return "now";
+    } else if (diffSeconds < 60) {
+      return `${diffSeconds}s ago`;
+    } else {
+      return swapTime.toLocaleTimeString();
+    }
+  };
+
+  return (
+    <div className="border border-border/50 rounded-md overflow-hidden">
+      <div className="p-3 border-b border-border/50 flex justify-between items-center">
+        <h3 className="text-sm font-medium">Recent Swaps</h3>
+        <div className="text-xs text-muted-foreground">
+          {swaps.length} recent swaps
+        </div>
+      </div>
+
+      <div className="max-h-[400px] overflow-y-auto p-2">
+        {loading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="text-red-500 p-4 text-center text-sm">{error}</div>
+        ) : (
+          <div className="space-y-1.5">
+            {swaps.map((swap) => {
+              const chainId = extractChainId(swap.chainId);
+              const networkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
+              const token0Symbol = swap.token0.symbol || "Token0";
+              const token1Symbol = swap.token1.symbol || "Token1";
+              const formattedAmount = formatUSD(swap.amountUSD);
+              const timestamp = getSwapTimestamp(swap.timestamp);
+
+              return (
+                <div
+                  key={swap.uniqueId}
+                  className="bg-secondary/30 rounded-lg p-2 hover:bg-secondary/50 transition-colors group"
+                >
+                  <div className="flex justify-between items-center mb-0.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      {timestamp}
+                    </div>
+                    <div className="text-xs bg-secondary/50 px-2 py-0.5 rounded-full">
+                      {networkName}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 font-medium text-sm">
+                      {token0Symbol} → {token1Symbol}
+                    </div>
+                    <div className="text-sm font-mono text-pink-500">
+                      {formattedAmount}
+                    </div>
+                  </div>
+
+                  <div className="text-xs mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block hidden">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="whitespace-nowrap font-medium">Tx:</span>
+                      <span className="text-xs font-mono">
+                        {swap.transaction.substring(0, 6)}...
+                        {swap.transaction.substring(
+                          swap.transaction.length - 4
+                        )}
+                      </span>
+                      <div className="flex">
+                        <button
+                          className="p-1 hover:bg-pink-500/10 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(swap.transaction);
+                          }}
+                          title="Copy transaction hash"
+                        >
+                          <Copy size={11} className="text-pink-500" />
+                        </button>
+                        <a
+                          href={getBlockExplorerUrl(chainId, swap.transaction)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 hover:bg-pink-500/10 rounded-full"
+                          onClick={(e) => e.stopPropagation()}
+                          title="View on block explorer"
+                        >
+                          <ExternalLink size={11} className="text-pink-500" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Pool-specific Recent Liquidity Component
+function PoolRecentLiquidity({ poolId }: { poolId: string }) {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchData = async () => {
+      try {
+        // We need to modify the query to filter by pool
+        const POOL_MODIFY_LIQUIDITY_QUERY = `
+          query poolModifyLiquidity($poolId: String!, $limit: Int!) {
+            ModifyLiquidity(
+              where: {pool: {id: {_eq: $poolId}}},
+              order_by: {timestamp: desc}, 
+              limit: $limit
+            ) {
+              id
+              amount
+              amount0
+              amount1
+              amountUSD
+              origin
+              sender
+              timestamp
+              transaction
+              token0 {
+                id
+                name
+                symbol
+                decimals
+              }
+              token1 {
+                id
+                name
+                symbol
+                decimals
+              }
+              tickLower
+              tickUpper
+              pool {
+                id
+                name
+              }
+              chainId
+            }
+          }
+        `;
+
+        const data = await graphqlClient.request<{ ModifyLiquidity: any[] }>(
+          POOL_MODIFY_LIQUIDITY_QUERY,
+          {
+            poolId,
+            limit: 20,
+          }
+        );
+
+        if (!isMounted) return;
+
+        const eventsWithIds = data.ModifyLiquidity.map((event: any) => ({
+          ...event,
+          uniqueId: generateUniqueId(event.id),
+        }));
+
+        setEvents(eventsWithIds);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching pool liquidity events:", err);
+        if (isMounted) {
+          setError("Failed to fetch liquidity events");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    const intervalId = setInterval(fetchData, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [poolId]);
+
+  const getEventTimestamp = (timestamp: string) => {
+    const eventTime = new Date(parseInt(timestamp) * 1000);
+    const now = new Date();
+    const diffSeconds = Math.floor(
+      (now.getTime() - eventTime.getTime()) / 1000
+    );
+
+    if (diffSeconds < 5) {
+      return "now";
+    } else if (diffSeconds < 60) {
+      return `${diffSeconds}s ago`;
+    } else {
+      return eventTime.toLocaleTimeString();
+    }
+  };
+
+  return (
+    <div className="border border-border/50 rounded-md overflow-hidden">
+      <div className="p-3 border-b border-border/50 flex justify-between items-center">
+        <h3 className="text-sm font-medium">Recent Liquidity Events</h3>
+        <div className="text-xs text-muted-foreground">
+          {events.length} recent events
+        </div>
+      </div>
+
+      <div className="max-h-[400px] overflow-y-auto p-2">
+        {loading ? (
+          <div className="flex items-center justify-center p-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="text-red-500 p-4 text-center text-sm">{error}</div>
+        ) : (
+          <div className="space-y-1.5">
+            {events.map((event) => {
+              const chainId = extractChainId(event.chainId);
+              const networkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
+              const token0Symbol = event.token0.symbol || "Token0";
+              const token1Symbol = event.token1.symbol || "Token1";
+              const formattedAmount = formatUSD(event.amountUSD);
+              const timestamp = getEventTimestamp(event.timestamp);
+              const poolName = event.pool?.name || "Unknown Pool";
+
+              const isAddLiquidity = parseFloat(event.amount) > 0;
+              const eventTypeLabel = isAddLiquidity ? "Add" : "Remove";
+              const eventTypeColor = isAddLiquidity
+                ? "text-green-500"
+                : "text-red-500";
+
+              return (
+                <div
+                  key={event.uniqueId}
+                  className="bg-secondary/30 rounded-lg p-2 hover:bg-secondary/50 transition-colors group"
+                >
+                  <div className="flex justify-between items-center mb-0.5">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      {timestamp}
+                    </div>
+                    <div className="text-xs bg-secondary/50 px-2 py-0.5 rounded-full">
+                      {networkName}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 text-sm">
+                      <span className={`font-medium ${eventTypeColor}`}>
+                        {eventTypeLabel}
+                      </span>
+                      <span className="ml-1 font-medium">
+                        {token0Symbol}/{token1Symbol}
+                      </span>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {poolName}
+                      </div>
+                    </div>
+                    <div className="text-sm font-mono text-pink-500">
+                      {formattedAmount}
+                    </div>
+                  </div>
+
+                  <div className="text-xs mt-1 pt-1 border-t border-border/20 group-hover:!block hidden">
+                    {(() => {
+                      const amount0 = formatTokenAmount(
+                        event.amount0,
+                        event.token0.decimals
+                      );
+                      const amount1 = formatTokenAmount(
+                        event.amount1,
+                        event.token1.decimals
+                      );
+
+                      const amount0Value = parseFloat(event.amount0);
+                      const amount1Value = parseFloat(event.amount1);
+
+                      const token0Direction =
+                        amount0Value > 0 ? "+" : amount0Value < 0 ? "-" : "";
+                      const token1Direction =
+                        amount1Value > 0 ? "+" : amount1Value < 0 ? "-" : "";
+
+                      const token0Color =
+                        amount0Value > 0
+                          ? "text-green-500"
+                          : amount0Value < 0
+                            ? "text-red-500"
+                            : "text-muted-foreground";
+                      const token1Color =
+                        amount1Value > 0
+                          ? "text-green-500"
+                          : amount1Value < 0
+                            ? "text-red-500"
+                            : "text-muted-foreground";
+
+                      return (
+                        <>
+                          <div className={token0Color}>
+                            {token0Direction} {amount0} {token0Symbol}
+                          </div>
+                          <div className={token1Color}>
+                            {token1Direction} {amount1} {token1Symbol}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="text-xs mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block hidden">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="whitespace-nowrap font-medium">Tx:</span>
+                      <span className="text-xs font-mono">
+                        {event.transaction.substring(0, 6)}...
+                        {event.transaction.substring(
+                          event.transaction.length - 4
+                        )}
+                      </span>
+                      <div className="flex">
+                        <button
+                          className="p-1 hover:bg-pink-500/10 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(event.transaction);
+                          }}
+                          title="Copy transaction hash"
+                        >
+                          <Copy size={11} className="text-pink-500" />
+                        </button>
+                        <a
+                          href={getBlockExplorerUrl(chainId, event.transaction)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 hover:bg-pink-500/10 rounded-full"
+                          onClick={(e) => e.stopPropagation()}
+                          title="View on block explorer"
+                        >
+                          <ExternalLink size={11} className="text-pink-500" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function Orderbook() {
   const [poolId, setPoolId] = useState<string>(DEFAULT_POOL_ID);
@@ -178,12 +686,22 @@ export function Orderbook() {
   const token0 = pool ? tokens[pool.token0] : undefined;
   const token1 = pool ? tokens[pool.token1] : undefined;
   const token0USD = useMemo(() => {
-    if (!token0 || !token0.derivedETH || !ethPriceUSD) return null;
-    return parseFloat(token0.derivedETH) * ethPriceUSD;
+    if (!token0 || token0.derivedETH == null || ethPriceUSD == null)
+      return null;
+    const derived = parseFloat(token0.derivedETH);
+    const ethUsd = ethPriceUSD;
+    if (!isFinite(derived) || derived <= 0 || !isFinite(ethUsd) || ethUsd <= 0)
+      return null;
+    return derived * ethUsd;
   }, [token0, ethPriceUSD]);
   const token1USD = useMemo(() => {
-    if (!token1 || !token1.derivedETH || !ethPriceUSD) return null;
-    return parseFloat(token1.derivedETH) * ethPriceUSD;
+    if (!token1 || token1.derivedETH == null || ethPriceUSD == null)
+      return null;
+    const derived = parseFloat(token1.derivedETH);
+    const ethUsd = ethPriceUSD;
+    if (!isFinite(derived) || derived <= 0 || !isFinite(ethUsd) || ethUsd <= 0)
+      return null;
+    return derived * ethUsd;
   }, [token1, ethPriceUSD]);
   const tickRows = useMemo(() => {
     if (!pool || !ticks.length)
@@ -298,7 +816,7 @@ export function Orderbook() {
         amount1,
       };
     });
-  }, [ticks, pool, tokens, token1USD]);
+  }, [ticks, pool, tokens, token0USD, token1USD]);
   const lastPriceUSD = useMemo(() => {
     if (!token1USD) return null;
     const p = currentPrice;
@@ -340,31 +858,6 @@ export function Orderbook() {
     }
     return filtered;
   }, [tickRows, activeTickIdx, pool]);
-
-  // Prepare histogram bars for currently displayed rows
-  const histogramBars = useMemo(() => {
-    if (!displayTickRows.length)
-      return [] as {
-        tickIdx: number;
-        usd0: number;
-        usd1: number;
-        usdTotal: number;
-      }[];
-    const usdBars = displayTickRows.map((r) => {
-      const usd0 =
-        r.amount0 != null && token0USD != null ? r.amount0 * token0USD : 0;
-      const usd1 =
-        r.amount1 != null && token1USD != null ? r.amount1 * token1USD : 0;
-      const usdTotal = usd0 + usd1;
-      return { tickIdx: r.tickIdx, usd0, usd1, usdTotal };
-    });
-    return usdBars;
-  }, [displayTickRows, token0USD, token1USD]);
-
-  const histogramMaxUSD = useMemo(() => {
-    if (!histogramBars.length) return 0;
-    return histogramBars.reduce((m, b) => (b.usdTotal > m ? b.usdTotal : m), 0);
-  }, [histogramBars]);
 
   return (
     <div className="space-y-4">
@@ -505,6 +998,34 @@ export function Orderbook() {
             </div>
             <div className="rounded-md border border-border/50 p-2">
               <div className="text-muted-foreground">
+                {token0?.symbol ?? "Token0"} Price (ETH)
+              </div>
+              <div className="font-medium">
+                {token0?.derivedETH
+                  ? `${parseFloat(token0.derivedETH).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">
+                {token1?.symbol ?? "Token1"} Price (ETH)
+              </div>
+              <div className="font-medium">
+                {token1?.derivedETH
+                  ? `${parseFloat(token1.derivedETH).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">ETH Price (USD)</div>
+              <div className="font-medium">
+                {ethPriceUSD != null
+                  ? `$${ethPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">
                 TVL in {token0?.symbol ?? "Token0"} (USD)
               </div>
               <div className="font-medium">
@@ -559,17 +1080,21 @@ export function Orderbook() {
       <div>
         <div className="text-xs mb-2">Tick Liquidity</div>
         <div className="border border-border/50 rounded-md overflow-hidden">
-          <div
-            className="grid text-xs px-2 py-1 bg-secondary/40"
-            style={{ gridTemplateColumns: "70px 90px 160px 160px 220px" }}
-          >
-            <div>Tick</div>
-            <div className="text-right">Price</div>
-            <div className="text-right">Net</div>
-            <div className="text-right">Gross</div>
-            <div className="text-right">USD</div>
-          </div>
-          <div className="max-h-72 overflow-y-auto">
+          <div className="max-h-72 overflow-auto">
+            <div
+              className="grid text-xs px-2 py-1 bg-secondary/80 sticky top-0 z-10"
+              style={{
+                gridTemplateColumns: "70px 90px 120px 120px 140px 140px 180px",
+              }}
+            >
+              <div>Tick</div>
+              <div className="text-right">Price</div>
+              <div className="text-right">Net</div>
+              <div className="text-right">Gross</div>
+              <div className="text-right">{token0?.symbol ?? "Token0"}</div>
+              <div className="text-right">{token1?.symbol ?? "Token1"}</div>
+              <div className="text-right">USD</div>
+            </div>
             {displayTickRows.map((row) => {
               const isCurrentTick = (() => {
                 if (!pool || pool.tick == null || pool.tickSpacing == null)
@@ -587,7 +1112,10 @@ export function Orderbook() {
                       ? "bg-yellow-400/30 border-l-4 border-yellow-500 font-semibold text-yellow-900 dark:text-yellow-100"
                       : "hover:bg-secondary/20"
                   }`}
-                  style={{ gridTemplateColumns: "70px 90px 160px 160px 220px" }}
+                  style={{
+                    gridTemplateColumns:
+                      "70px 90px 120px 120px 140px 140px 180px",
+                  }}
                 >
                   <div>{row.tickIdx}</div>
                   <div className="text-right">
@@ -604,6 +1132,20 @@ export function Orderbook() {
                       : "-"}
                   </div>
                   <div className="text-right">
+                    {row.amount0 != null
+                      ? row.amount0.toLocaleString(undefined, {
+                          maximumFractionDigits: 6,
+                        })
+                      : "-"}
+                  </div>
+                  <div className="text-right">
+                    {row.amount1 != null
+                      ? row.amount1.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })
+                      : "-"}
+                  </div>
+                  <div className="text-right">
                     {row.usdValueGross != null
                       ? `$${row.usdValueGross.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                       : "-"}
@@ -615,49 +1157,10 @@ export function Orderbook() {
         </div>
       </div>
 
-      {/* Histogram of per-interval USD liquidity (token0 vs token1) */}
-      <div>
-        <div className="text-xs mb-2">Depth by Tick (USD)</div>
-        <div className="border border-border/50 rounded-md p-2">
-          {histogramBars.length ? (
-            <div className="flex items-end gap-1 h-40">
-              {histogramBars.map((b) => {
-                const total = histogramMaxUSD || 1;
-                const heightPct = Math.max(
-                  0,
-                  Math.min(100, (b.usdTotal / total) * 100)
-                );
-                const ethPct = b.usdTotal > 0 ? (b.usd0 / b.usdTotal) * 100 : 0;
-                const usdcPct = 100 - ethPct;
-                const isActive =
-                  activeTickIdx != null && b.tickIdx === activeTickIdx;
-                return (
-                  <div key={`bar-${b.tickIdx}`} className="flex-1 min-w-[6px]">
-                    <div
-                      className={`relative w-full rounded-sm overflow-hidden ${isActive ? "ring-2 ring-yellow-500" : ""}`}
-                      style={{ height: `${heightPct}%` }}
-                      title={`${b.tickIdx}: $${b.usdTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-emerald-500/70"
-                        style={{ height: `${ethPct}%` }}
-                      />
-                      <div
-                        className="absolute top-0 left-0 right-0 bg-blue-500/70"
-                        style={{ height: `${usdcPct}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-center mt-1 text-muted-foreground">
-                      {b.tickIdx}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">No data</div>
-          )}
-        </div>
+      {/* Recent Pool Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <PoolRecentSwaps poolId={poolId} />
+        <PoolRecentLiquidity poolId={poolId} />
       </div>
     </div>
   );
