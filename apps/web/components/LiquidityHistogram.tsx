@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -18,11 +19,65 @@ type Point = {
   active?: boolean;
 };
 
-export function LiquidityHistogram({ data }: { data: Point[] }) {
+interface LiquidityHistogramProps {
+  data: Point[];
+  tickRange?: number;
+  onTickRangeChange?: (range: number) => void;
+}
+
+export function LiquidityHistogram({
+  data,
+  tickRange = 60,
+  onTickRangeChange,
+}: LiquidityHistogramProps) {
+  const [showTicks, setShowTicks] = useState(false);
   const maxUsd = Math.max(0, ...data.map((d) => d.usd || 0));
 
   return (
     <div className="border border-border/50 rounded-md p-3 bg-secondary/5">
+      {/* Controls */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-4">
+          <button
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              !showTicks
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setShowTicks(false)}
+          >
+            Price
+          </button>
+          <button
+            className={`px-2 py-1 text-xs rounded transition-colors ${
+              showTicks
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setShowTicks(true)}
+          >
+            Ticks
+          </button>
+        </div>
+
+        {onTickRangeChange && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Range:</span>
+            <select
+              className="text-xs bg-background border border-border/50 rounded px-2 py-1"
+              value={tickRange}
+              onChange={(e) => onTickRangeChange(parseInt(e.target.value))}
+            >
+              <option value={20}>20 ticks</option>
+              <option value={40}>40 ticks</option>
+              <option value={60}>60 ticks</option>
+              <option value={100}>100 ticks</option>
+              <option value={200}>200 ticks</option>
+            </select>
+          </div>
+        )}
+      </div>
+
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -30,10 +85,14 @@ export function LiquidityHistogram({ data }: { data: Point[] }) {
             margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
           >
             <XAxis
-              dataKey="price"
+              dataKey={showTicks ? "tickIdx" : "price"}
               tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
               tickFormatter={(v: number) =>
-                `$${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                showTicks
+                  ? v.toString()
+                  : Number(v).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })
               }
               axisLine={{ stroke: "hsl(var(--border))" }}
               tickLine={{ stroke: "hsl(var(--border))" }}
@@ -64,9 +123,17 @@ export function LiquidityHistogram({ data }: { data: Point[] }) {
                 }
                 return value;
               }}
-              labelFormatter={(label: any) =>
-                `Price: $${Number(label).toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-              }
+              labelFormatter={(label: any, payload: any) => {
+                if (payload && payload[0] && payload[0].payload) {
+                  const point = payload[0].payload;
+                  return showTicks
+                    ? `Tick: ${point.tickIdx} (Price: ${Number(point.price).toLocaleString(undefined, { maximumFractionDigits: 2 })})`
+                    : `Price: ${Number(point.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                }
+                return showTicks
+                  ? `Tick: ${label}`
+                  : `Price: ${Number(label).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+              }}
             />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             <Bar dataKey="usd" radius={[2, 2, 0, 0]} isAnimationActive={false}>

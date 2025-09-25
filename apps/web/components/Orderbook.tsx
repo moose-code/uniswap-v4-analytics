@@ -9,6 +9,7 @@ import {
   BUNDLE_QUERY,
   RECENT_SWAPS_BY_POOL_QUERY,
   RECENT_MODIFY_LIQUIDITY_QUERY,
+  POOLS_QUERY,
 } from "@/lib/graphql";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, ExternalLink } from "lucide-react";
@@ -605,6 +606,52 @@ export function Orderbook() {
   const [ethPriceUSD, setEthPriceUSD] = useState<number | null>(null);
   const [invertPrices, setInvertPrices] = useState<boolean>(false);
   const [refreshNonce, setRefreshNonce] = useState<number>(0);
+  const [topPools, setTopPools] = useState<any[]>([]);
+  const [showPoolDropdown, setShowPoolDropdown] = useState<boolean>(false);
+  const [histogramTickRange, setHistogramTickRange] = useState<number>(60);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // fetch top pools for dropdown
+  useEffect(() => {
+    let mounted = true;
+    const fetchTopPools = async () => {
+      try {
+        const data = await graphqlClient.request<{ Pool: any[] }>(POOLS_QUERY);
+        if (mounted && data.Pool) {
+          // Take top 20 pools with meaningful TVL
+          const filteredPools = data.Pool.filter(
+            (p) =>
+              p.totalValueLockedUSD && parseFloat(p.totalValueLockedUSD) > 1000
+          ).slice(0, 20);
+          setTopPools(filteredPools);
+        }
+      } catch (err) {
+        console.error("Error fetching top pools:", err);
+      }
+    };
+
+    fetchTopPools();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowPoolDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // fetch pool metadata
   useEffect(() => {
@@ -878,51 +925,86 @@ export function Orderbook() {
     return Math.floor(currentTick / spacing) * spacing;
   }, [pool]);
 
-  // Limit the displayed rows to ~60 centered around the active tick
+  // Limit the displayed rows based on histogram tick range, centered around the active tick
   const displayTickRows = useMemo(() => {
     if (!tickRows.length) return tickRows;
     if (activeTickIdx == null || !pool) return tickRows;
     const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
-    const halfWindow = 30; // ~60 rows total
+    const halfWindow = Math.floor(histogramTickRange / 2);
     const minTick = activeTickIdx - spacing * halfWindow;
-    const maxTick = activeTickIdx + spacing * (halfWindow - 1); // keeps ~60 including active
+    const maxTick = activeTickIdx + spacing * (halfWindow - 1);
     const filtered = tickRows.filter(
       (r) => r.tickIdx >= minTick && r.tickIdx <= maxTick
     );
-    // If more than 60 for any reason, trim to 60 centered around active
-    if (filtered.length > 60) {
+    // If more than expected for any reason, trim to expected range centered around active
+    if (filtered.length > histogramTickRange) {
       // Ensure active is within slice
       const activeIndex = filtered.findIndex(
         (r) => r.tickIdx === activeTickIdx
       );
       const start = Math.max(
         0,
-        Math.min(activeIndex - 30, filtered.length - 60)
+        Math.min(activeIndex - halfWindow, filtered.length - histogramTickRange)
       );
-      return filtered.slice(start, start + 60);
+      return filtered.slice(start, start + histogramTickRange);
     }
     return filtered;
-  }, [tickRows, activeTickIdx, pool]);
+  }, [tickRows, activeTickIdx, pool, histogramTickRange]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <input
-          className="w-full max-w-xl px-3 py-2 rounded-md border border-border/50 bg-background"
-          value={poolId}
-          onChange={(e) => setPoolId(e.target.value)}
-          placeholder="Pool ID (e.g. 130_0x...)"
-        />
+        <div ref={dropdownRef} className="relative flex-1 max-w-4xl">
+          <input
+            className="w-full px-3 py-2 rounded-md border border-border/50 bg-background pr-20 text-sm font-mono"
+            value={poolId}
+            onChange={(e) => setPoolId(e.target.value)}
+            placeholder="Pool ID (e.g. 1_0x...)"
+          />
+          <button
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded"
+            onClick={() => setShowPoolDropdown(!showPoolDropdown)}
+            title="Select from top pools"
+          >
+            ▼
+          </button>
+          {showPoolDropdown && topPools.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/50 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
+              {topPools.map((pool) => (
+                <button
+                  key={pool.id}
+                  className="w-full px-3 py-2 text-left hover:bg-secondary/40 border-b border-border/20 last:border-b-0"
+                  onClick={() => {
+                    setPoolId(pool.id);
+                    setShowPoolDropdown(false);
+                  }}
+                >
+                  <div className="text-sm font-medium truncate">
+                    {pool.name ||
+                      `${pool.token0?.slice(0, 6)}.../${pool.token1?.slice(0, 6)}...`}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    TVL: $
+                    {parseFloat(pool.totalValueLockedUSD || "0").toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 0 }
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
-          className="px-3 py-2 text-xs rounded-md border border-border/50 hover:bg-secondary/40"
+          className="px-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => setRefreshNonce((n) => n + 1)}
           title="Refresh"
         >
-          Refresh
+          ↻
         </button>
       </div>
       <div className="text-[10px] text-muted-foreground">
-        Enter chainId_poolId to show order book for any pool
+        Enter chainId_poolId manually or select from top pools by TVL
       </div>
 
       {loading && <div>Loading...</div>}
@@ -1025,78 +1107,6 @@ export function Orderbook() {
                 {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
               </div>
             </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Token0 Price</div>
-              <div className="font-medium">
-                {token0USD != null
-                  ? `$${token0USD.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Token1 Price</div>
-              <div className="font-medium">
-                {token1USD != null
-                  ? `$${token1USD.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">
-                {token0?.symbol ?? "Token0"} Price (ETH)
-              </div>
-              <div className="font-medium">
-                {token0?.derivedETH
-                  ? `${parseFloat(token0.derivedETH).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">
-                {token1?.symbol ?? "Token1"} Price (ETH)
-              </div>
-              <div className="font-medium">
-                {token1?.derivedETH
-                  ? `${parseFloat(token1.derivedETH).toLocaleString(undefined, { maximumFractionDigits: 8 })} ETH`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">ETH Price (USD)</div>
-              <div className="font-medium">
-                {ethPriceUSD != null
-                  ? `$${ethPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">
-                TVL in {token0?.symbol ?? "Token0"} (USD)
-              </div>
-              <div className="font-medium">
-                {pool.totalValueLockedToken0 && token0USD != null
-                  ? `$${(Number(pool.totalValueLockedToken0) * token0USD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">
-                TVL in {token1?.symbol ?? "Token1"} (USD)
-              </div>
-              <div className="font-medium">
-                {pool.totalValueLockedToken1 && token1USD != null
-                  ? `$${(Number(pool.totalValueLockedToken1) * token1USD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">TVL (ETH USD)</div>
-              <div className="font-medium">
-                {pool.totalValueLockedETH && ethPriceUSD
-                  ? `$${(Number(pool.totalValueLockedETH) * ethPriceUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
-            </div>
 
             <div className="rounded-md border border-border/50 p-2 col-span-2">
               <div className="text-muted-foreground">Hook</div>
@@ -1132,6 +1142,8 @@ export function Orderbook() {
             tickIdx: r.tickIdx,
             active: activeTickIdx != null && r.tickIdx === activeTickIdx,
           }))}
+          tickRange={histogramTickRange}
+          onTickRangeChange={setHistogramTickRange}
         />
       </div>
 
