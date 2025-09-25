@@ -12,6 +12,8 @@ import {
 } from "@/lib/graphql";
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, ExternalLink } from "lucide-react";
+import { getAmount0, getAmount1 } from "@/lib/liquidityMath/liquidityAmounts";
+import { TickMath } from "@/lib/liquidityMath/tickMath";
 
 type Pool = {
   id: string;
@@ -771,39 +773,61 @@ export function Orderbook() {
       const price = priceToken0InToken1FromTick(tickIdx);
       const netLiquidity = parseFloat(t.liquidityNet || "0");
       const grossLiquidity = parseFloat(t.liquidityGross || "0");
-      // Compute USD depth across [tickIdx, tickIdx + spacing) using ACTIVE L
+      // Compute USD depth across [tickIdx, tickIdx + spacing) using ACTIVE L and proper Uniswap math
       let usdValueGross: number | null = null;
-      let amount0: number | null = null;
-      let amount1: number | null = null;
+      let amount0: number | null = null; // human units (decimal adjusted)
+      let amount1: number | null = null; // human units (decimal adjusted)
       const L = activeLiquidityByTick.get(tickIdx) ?? poolLiquidity; // fallback to pool L if absent
-      if (token0USD != null && token1USD != null && isFinite(price) && L > 0) {
-        const pA = price;
-        const pB = priceToken0InToken1FromTick(tickIdx + spacing);
-        const sA = Math.sqrt(pA);
-        const sB = Math.sqrt(pB);
-        if (isFinite(sA) && isFinite(sB) && sA > 0 && sB > 0 && sB > sA) {
-          let a0 = 0;
-          let a1 = 0;
-          if (sp == null) {
-            // Fallback: treat as outside interval; pick midpoint branch to avoid NaN
-            a0 = 0;
-            a1 = L * (sB - sA);
-          } else if (sp <= sA) {
-            // Entirely below: all token0
-            a0 = (L * (sB - sA)) / (sA * sB);
-            a1 = 0;
-          } else if (sp >= sB) {
-            // Entirely above: all token1
-            a0 = 0;
-            a1 = L * (sB - sA);
-          } else {
-            // Inside the active interval
-            a0 = (L * (sB - sp)) / (sp * sB);
-            a1 = L * (sp - sA);
-          }
-          amount0 = a0;
-          amount1 = a1;
-          usdValueGross = a0 * token0USD + a1 * token1USD;
+
+      if (
+        token0USD != null &&
+        token1USD != null &&
+        L > 0 &&
+        pool?.tick != null
+      ) {
+        try {
+          // Use proper Uniswap math with bigint precision
+          const currentTick = BigInt(parseInt(pool.tick as string, 10));
+          const tickLower = BigInt(tickIdx);
+          const tickUpper = BigInt(tickIdx + spacing);
+          const liquidityBigInt = BigInt(Math.floor(L));
+
+          // Get current sqrt price from current tick
+          const currSqrtPriceX96 = TickMath.getSqrtRatioAtTick(currentTick);
+
+          // Calculate amounts using proper Uniswap math
+          const amount0BigInt = getAmount0(
+            tickLower,
+            tickUpper,
+            currentTick,
+            liquidityBigInt,
+            currSqrtPriceX96
+          );
+
+          const amount1BigInt = getAmount1(
+            tickLower,
+            tickUpper,
+            currentTick,
+            liquidityBigInt,
+            currSqrtPriceX96
+          );
+
+          // Convert to human units using actual token decimals from fetched token objects
+          const token0Dec = parseInt(tokens[pool.token0]?.decimals || "18", 10);
+          const token1Dec = parseInt(tokens[pool.token1]?.decimals || "18", 10);
+
+          const amount0Tokens = Number(amount0BigInt) / Math.pow(10, token0Dec);
+          const amount1Tokens = Number(amount1BigInt) / Math.pow(10, token1Dec);
+
+          amount0 = amount0Tokens;
+          amount1 = amount1Tokens;
+          usdValueGross = amount0Tokens * token0USD + amount1Tokens * token1USD;
+        } catch (error) {
+          // Fallback to null on any calculation error
+          console.warn("Liquidity calculation error for tick", tickIdx, error);
+          amount0 = null;
+          amount1 = null;
+          usdValueGross = null;
         }
       }
       return {
