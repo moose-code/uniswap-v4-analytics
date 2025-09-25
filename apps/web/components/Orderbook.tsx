@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Copy, ExternalLink } from "lucide-react";
 import { getAmount0, getAmount1 } from "@/lib/liquidityMath/liquidityAmounts";
 import { TickMath } from "@/lib/liquidityMath/tickMath";
+import { LiquidityHistogram } from "./LiquidityHistogram";
 
 type Pool = {
   id: string;
@@ -175,6 +176,14 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
+      // Skip if poolId is empty or invalid
+      if (!poolId || !poolId.includes("_")) {
+        if (isMounted) {
+          setError("Invalid pool ID");
+        }
+        return;
+      }
+
       try {
         const data = await graphqlClient.request<{ Swap: any[] }>(
           RECENT_SWAPS_BY_POOL_QUERY,
@@ -194,9 +203,9 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
         setSwaps(swapsWithIds);
         setError(null);
       } catch (err) {
-        console.error("Error fetching pool swaps:", err);
+        console.error("Error fetching pool swaps for pool:", poolId, err);
         if (isMounted) {
-          setError("Failed to fetch swaps");
+          setError("Failed to fetch swaps for this pool");
         }
       } finally {
         if (isMounted) {
@@ -328,6 +337,14 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
+      // Skip if poolId is empty or invalid
+      if (!poolId || !poolId.includes("_")) {
+        if (isMounted) {
+          setError("Invalid pool ID");
+        }
+        return;
+      }
+
       try {
         // We need to modify the query to filter by pool
         const POOL_MODIFY_LIQUIDITY_QUERY = `
@@ -387,9 +404,13 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
         setEvents(eventsWithIds);
         setError(null);
       } catch (err) {
-        console.error("Error fetching pool liquidity events:", err);
+        console.error(
+          "Error fetching pool liquidity events for pool:",
+          poolId,
+          err
+        );
         if (isMounted) {
-          setError("Failed to fetch liquidity events");
+          setError("Failed to fetch liquidity events for this pool");
         }
       } finally {
         if (isMounted) {
@@ -857,28 +878,28 @@ export function Orderbook() {
     return Math.floor(currentTick / spacing) * spacing;
   }, [pool]);
 
-  // Limit the displayed rows to ~20 centered around the active tick
+  // Limit the displayed rows to ~60 centered around the active tick
   const displayTickRows = useMemo(() => {
     if (!tickRows.length) return tickRows;
     if (activeTickIdx == null || !pool) return tickRows;
     const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
-    const halfWindow = 10; // ~20 rows total
+    const halfWindow = 30; // ~60 rows total
     const minTick = activeTickIdx - spacing * halfWindow;
-    const maxTick = activeTickIdx + spacing * (halfWindow - 1); // keeps ~20 including active
+    const maxTick = activeTickIdx + spacing * (halfWindow - 1); // keeps ~60 including active
     const filtered = tickRows.filter(
       (r) => r.tickIdx >= minTick && r.tickIdx <= maxTick
     );
-    // If more than 20 for any reason, trim to 20 centered around active
-    if (filtered.length > 20) {
+    // If more than 60 for any reason, trim to 60 centered around active
+    if (filtered.length > 60) {
       // Ensure active is within slice
       const activeIndex = filtered.findIndex(
         (r) => r.tickIdx === activeTickIdx
       );
       const start = Math.max(
         0,
-        Math.min(activeIndex - 10, filtered.length - 20)
+        Math.min(activeIndex - 30, filtered.length - 60)
       );
-      return filtered.slice(start, start + 20);
+      return filtered.slice(start, start + 60);
     }
     return filtered;
   }, [tickRows, activeTickIdx, pool]);
@@ -1101,6 +1122,19 @@ export function Orderbook() {
         </div>
       )}
 
+      {/* Liquidity Histogram (Recharts) */}
+      <div>
+        <div className="text-xs mb-2">Liquidity Distribution</div>
+        <LiquidityHistogram
+          data={displayTickRows.map((r) => ({
+            price: r.price,
+            usd: r.usdValueGross || 0,
+            tickIdx: r.tickIdx,
+            active: activeTickIdx != null && r.tickIdx === activeTickIdx,
+          }))}
+        />
+      </div>
+
       <div>
         <div className="text-xs mb-2">Tick Liquidity</div>
         <div className="border border-border/50 rounded-md overflow-hidden">
@@ -1143,7 +1177,7 @@ export function Orderbook() {
                 >
                   <div>{row.tickIdx}</div>
                   <div className="text-right">
-                    {isFinite(row.price) ? row.price.toFixed(6) : "-"}
+                    {isFinite(row.price) ? row.price.toFixed(2) : "-"}
                   </div>
                   <div className="text-right">
                     {isFinite(row.netLiquidity)
