@@ -14,6 +14,8 @@ type Pool = {
   id: string;
   chainId: string;
   name: string;
+  createdAtTimestamp?: string;
+  createdAtBlockNumber?: string;
   token0: string; // token id
   token1: string; // token id
   feeTier: string;
@@ -23,6 +25,23 @@ type Pool = {
   token1Price: string;
   tick: string | null;
   tickSpacing: string;
+  totalValueLockedUSD?: string;
+  totalValueLockedToken0?: string;
+  totalValueLockedToken1?: string;
+  totalValueLockedETH?: string;
+  totalValueLockedUSDUntracked?: string;
+  volumeUSD?: string;
+  untrackedVolumeUSD?: string;
+  volumeToken0?: string;
+  volumeToken1?: string;
+  feesUSD?: string;
+  feesUSDUntracked?: string;
+  txCount?: string;
+  collectedFeesToken0?: string;
+  collectedFeesToken1?: string;
+  collectedFeesUSD?: string;
+  liquidityProviderCount?: string;
+  hooks?: string;
 };
 
 type Token = {
@@ -54,6 +73,7 @@ export function Orderbook() {
   const [error, setError] = useState<string | null>(null);
   const [ethPriceUSD, setEthPriceUSD] = useState<number | null>(null);
   const [invertPrices, setInvertPrices] = useState<boolean>(false);
+  const [refreshNonce, setRefreshNonce] = useState<number>(0);
 
   // fetch pool metadata
   useEffect(() => {
@@ -103,7 +123,7 @@ export function Orderbook() {
     return () => {
       mounted = false;
     };
-  }, [poolId]);
+  }, [poolId, refreshNonce]);
 
   // fetch ticks around current tick
   useEffect(() => {
@@ -135,16 +155,10 @@ export function Orderbook() {
       mounted = false;
       clearInterval(id);
     };
-  }, [pool, poolId]);
+  }, [pool, poolId, refreshNonce]);
 
-  const ladder = useMemo(() => {
-    if (!pool || !ticks.length)
-      return { bids: [], asks: [], currentPrice: 0 } as {
-        bids: { price: number; liquidity: number }[];
-        asks: { price: number; liquidity: number }[];
-        currentPrice: number;
-      };
-
+  const currentPrice = useMemo(() => {
+    if (!pool || !ticks.length) return 0;
     const currentTick = parseInt(pool.tick as string, 10);
     const token0Decimals = parseInt(
       (tokens[pool.token0]?.decimals as string) ?? "18",
@@ -154,52 +168,11 @@ export function Orderbook() {
       (tokens[pool.token1]?.decimals as string) ?? "18",
       10
     );
-
-    // Price of token0 in terms of token1 (e.g., USDC per ETH for ETH/USDC)
     const priceToken0InToken1FromTick = (tick: number) => {
       const ratio = Math.pow(1.0001, tick);
       return ratio * Math.pow(10, token0Decimals - token1Decimals);
     };
-    const bids: { price: number; liquidity: number }[] = [];
-    const asks: { price: number; liquidity: number }[] = [];
-
-    for (const t of ticks) {
-      const tickIdx = parseInt(t.tickIdx, 10);
-      const liq = Math.abs(parseFloat(t.liquidityNet || "0"));
-      // Compute price ourselves to avoid orientation/decimals issues from the API
-      const price = priceToken0InToken1FromTick(tickIdx);
-      if (!isFinite(price) || !isFinite(liq)) continue;
-      if (tickIdx <= currentTick) bids.push({ price, liquidity: liq });
-      else asks.push({ price, liquidity: liq });
-    }
-
-    // aggregate by rounding price for a simple ladder
-    const bucket = (
-      arr: { price: number; liquidity: number }[],
-      stepPct: number
-    ) => {
-      const map = new Map<number, number>();
-      for (const { price, liquidity } of arr) {
-        const key = Math.round(price / (price * stepPct)) * (price * stepPct);
-        const prev = map.get(key) || 0;
-        map.set(key, prev + liquidity);
-      }
-      const out = Array.from(map.entries()).map(([price, liquidity]) => ({
-        price,
-        liquidity,
-      }));
-      return out.sort((a, b) => a.price - b.price);
-    };
-
-    const step = 0.001; // 0.1%
-    const bidBook = bucket(bids, step);
-    const askBook = bucket(asks, step);
-    const currentPrice = priceToken0InToken1FromTick(currentTick);
-    return {
-      bids: bidBook.slice(-30),
-      asks: askBook.slice(0, 30),
-      currentPrice,
-    };
+    return priceToken0InToken1FromTick(currentTick);
   }, [ticks, pool, tokens]);
 
   const token0 = pool ? tokens[pool.token0] : undefined;
@@ -212,12 +185,62 @@ export function Orderbook() {
     if (!token1 || !token1.derivedETH || !ethPriceUSD) return null;
     return parseFloat(token1.derivedETH) * ethPriceUSD;
   }, [token1, ethPriceUSD]);
+  const tickRows = useMemo(() => {
+    if (!pool || !ticks.length)
+      return [] as {
+        tickIdx: number;
+        price: number;
+        netLiquidity: number;
+        grossLiquidity: number;
+        usdValueGross: number | null;
+      }[];
+
+    const token0Decimals = parseInt(
+      (tokens[pool.token0]?.decimals as string) ?? "18",
+      10
+    );
+    const token1Decimals = parseInt(
+      (tokens[pool.token1]?.decimals as string) ?? "18",
+      10
+    );
+    const priceToken0InToken1FromTick = (tick: number) => {
+      const ratio = Math.pow(1.0001, tick);
+      return ratio * Math.pow(10, token0Decimals - token1Decimals);
+    };
+
+    return ticks.map((t) => {
+      const tickIdx = parseInt(t.tickIdx, 10);
+      const price = priceToken0InToken1FromTick(tickIdx);
+      const netLiquidity = parseFloat(t.liquidityNet || "0");
+      const grossLiquidity = parseFloat(t.liquidityGross || "0");
+      // Estimate USD value across one tick range using liquidity and sqrt price delta
+      let usdValueGross: number | null = null;
+      if (
+        token0USD != null &&
+        token1USD != null &&
+        isFinite(price) &&
+        grossLiquidity > 0
+      ) {
+        const pA = price;
+        const pB = priceToken0InToken1FromTick(tickIdx + 1);
+        const sA = Math.sqrt(pA);
+        const sB = Math.sqrt(pB);
+        const deltaS = sB - sA;
+        if (deltaS > 0 && isFinite(deltaS) && sA > 0 && sB > 0) {
+          const amount0 = grossLiquidity * (deltaS / (sA * sB));
+          const amount1 = grossLiquidity * deltaS;
+          usdValueGross = amount0 * token0USD + amount1 * token1USD;
+        }
+      }
+      return { tickIdx, price, netLiquidity, grossLiquidity, usdValueGross };
+    });
+  }, [ticks, pool, tokens, token1USD]);
   const lastPriceUSD = useMemo(() => {
     if (!token1USD) return null;
-    const p = ladder.currentPrice;
+    const p = currentPrice;
     if (!isFinite(p) || p <= 0) return null;
     return p * token1USD;
-  }, [token1USD, ladder.currentPrice]);
+  }, [token1USD, currentPrice]);
 
   return (
     <div className="space-y-4">
@@ -228,6 +251,13 @@ export function Orderbook() {
           onChange={(e) => setPoolId(e.target.value)}
           placeholder="Pool ID (e.g. 130_0x...)"
         />
+        <button
+          className="px-3 py-2 text-xs rounded-md border border-border/50 hover:bg-secondary/40"
+          onClick={() => setRefreshNonce((n) => n + 1)}
+          title="Refresh"
+        >
+          Refresh
+        </button>
       </div>
       <div className="text-[10px] text-muted-foreground">
         Enter chainId_poolId to show order book for any pool
@@ -237,16 +267,16 @@ export function Orderbook() {
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
       {pool && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="text-sm text-muted-foreground">
             Pair: {token0?.symbol ?? "Token0"} / {token1?.symbol ?? "Token1"} •
             Fee: {(Number(pool.feeTier) / 1e4).toFixed(2)}%
           </div>
           <div className="flex items-center gap-3">
             <div className="text-2xl font-semibold">
-              {(invertPrices && ladder.currentPrice > 0
-                ? 1 / ladder.currentPrice
-                : ladder.currentPrice
+              {(invertPrices && currentPrice > 0
+                ? 1 / currentPrice
+                : currentPrice
               ).toLocaleString(undefined, {
                 maximumFractionDigits: 6,
               })}
@@ -260,6 +290,26 @@ export function Orderbook() {
                 : `${token1?.symbol ?? "Token1"}/${token0?.symbol ?? "Token0"}`}
             </button>
           </div>
+          <div className="text-xs">
+            <div>
+              1 {token0?.symbol ?? "Token0"} ={" "}
+              {currentPrice > 0
+                ? currentPrice.toLocaleString(undefined, {
+                    maximumFractionDigits: 6,
+                  })
+                : "-"}{" "}
+              {token1?.symbol ?? "Token1"}
+            </div>
+            <div>
+              1 {token1?.symbol ?? "Token1"} ={" "}
+              {currentPrice > 0
+                ? (1 / currentPrice).toLocaleString(undefined, {
+                    maximumFractionDigits: 8,
+                  })
+                : "-"}{" "}
+              {token0?.symbol ?? "Token0"}
+            </div>
+          </div>
           <div className="text-xs text-muted-foreground">
             {lastPriceUSD
               ? `Last price: $${lastPriceUSD.toLocaleString(undefined, {
@@ -272,109 +322,171 @@ export function Orderbook() {
                 })}`
               : ""}
           </div>
-        </div>
-      )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <div className="text-xs mb-2">Bids</div>
-          <div className="border border-border/50 rounded-md overflow-hidden">
-            <div className="grid grid-cols-2 text-xs px-2 py-1 bg-secondary/40">
-              <div>Price</div>
-              <div className="text-right">Liquidity</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">TVL</div>
+              <div className="font-medium">
+                {pool.totalValueLockedUSD
+                  ? `$${Number(pool.totalValueLockedUSD).toLocaleString(
+                      undefined,
+                      {
+                        maximumFractionDigits: 0,
+                      }
+                    )}`
+                  : "-"}
+              </div>
             </div>
-            <div className="max-h-96 overflow-y-auto">
-              {(() => {
-                // Optionally invert and sort for display
-                const rows = invertPrices
-                  ? ladder.bids
-                      .map((r) => ({
-                        price: r.price > 0 ? 1 / r.price : 0,
-                        liquidity: r.liquidity,
-                      }))
-                      .sort((a, b) => a.price - b.price)
-                  : [...ladder.bids];
-                const cumulative: number[] = [];
-                let run = 0;
-                for (const b of rows) {
-                  run += b.liquidity;
-                  cumulative.push(run);
-                }
-                const max = Math.max(...cumulative, 1);
-                return rows.map((row, idx) => (
-                  <motion.div
-                    key={`bid-${idx}`}
-                    className="relative grid grid-cols-2 px-2 py-1 text-xs"
-                  >
-                    <div className="relative">
-                      <div
-                        className="absolute right-0 top-1/2 -translate-y-1/2 h-3 bg-green-500/30 rounded-sm"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(0, ((cumulative[idx] || 0) / max) * 100)
-                          )}%`,
-                        }}
-                      />
-                      <span className="relative z-10">
-                        {row.price.toFixed(6)}
-                      </span>
-                    </div>
-                    <div className="text-right">{row.liquidity.toFixed(2)}</div>
-                  </motion.div>
-                ));
-              })()}
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Volume</div>
+              <div className="font-medium">
+                {pool.volumeUSD
+                  ? `$${Number(pool.volumeUSD).toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Fees</div>
+              <div className="font-medium">
+                {pool.feesUSD
+                  ? `$${Number(pool.feesUSD).toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Tx Count</div>
+              <div className="font-medium">
+                {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Token0 Price</div>
+              <div className="font-medium">
+                {token0USD != null
+                  ? `$${token0USD.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Token1 Price</div>
+              <div className="font-medium">
+                {token1USD != null
+                  ? `$${token1USD.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">
+                TVL in {token0?.symbol ?? "Token0"} (USD)
+              </div>
+              <div className="font-medium">
+                {pool.totalValueLockedToken0 && token0USD != null
+                  ? `$${(Number(pool.totalValueLockedToken0) * token0USD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">
+                TVL in {token1?.symbol ?? "Token1"} (USD)
+              </div>
+              <div className="font-medium">
+                {pool.totalValueLockedToken1 && token1USD != null
+                  ? `$${(Number(pool.totalValueLockedToken1) * token1USD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">TVL (ETH USD)</div>
+              <div className="font-medium">
+                {pool.totalValueLockedETH && ethPriceUSD
+                  ? `$${(Number(pool.totalValueLockedETH) * ethPriceUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+
+            <div className="rounded-md border border-border/50 p-2 col-span-2">
+              <div className="text-muted-foreground">Hook</div>
+              <div className="font-mono text-[11px] break-all">
+                {pool.hooks ?? "-"}
+              </div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Current Tick</div>
+              <div className="font-medium">{pool.tick ?? "-"}</div>
+            </div>
+            <div className="rounded-md border border-border/50 p-2">
+              <div className="text-muted-foreground">Created</div>
+              <div className="font-medium">
+                {pool.createdAtTimestamp
+                  ? new Date(
+                      Number(pool.createdAtTimestamp) * 1000
+                    ).toLocaleString()
+                  : "-"}
+              </div>
             </div>
           </div>
         </div>
-        <div>
-          <div className="text-xs mb-2">Asks</div>
-          <div className="border border-border/50 rounded-md overflow-hidden">
-            <div className="grid grid-cols-2 text-xs px-2 py-1 bg-secondary/40">
-              <div>Price</div>
-              <div className="text-right">Liquidity</div>
-            </div>
-            <div className="max-h-96 overflow-y-auto">
-              {(() => {
-                const rows = invertPrices
-                  ? ladder.asks
-                      .map((r) => ({
-                        price: r.price > 0 ? 1 / r.price : 0,
-                        liquidity: r.liquidity,
-                      }))
-                      .sort((a, b) => a.price - b.price)
-                  : [...ladder.asks];
-                const cumulative: number[] = [];
-                let run = 0;
-                for (const a of rows) {
-                  run += a.liquidity;
-                  cumulative.push(run);
-                }
-                const max = Math.max(...cumulative, 1);
-                return rows.map((row, idx) => (
-                  <motion.div
-                    key={`ask-${idx}`}
-                    className="relative grid grid-cols-2 px-2 py-1 text-xs"
-                  >
-                    <div className="relative">
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-3 bg-pink-500/30 rounded-sm"
-                        style={{
-                          width: `${Math.min(
-                            100,
-                            Math.max(0, ((cumulative[idx] || 0) / max) * 100)
-                          )}%`,
-                        }}
-                      />
-                      <span className="relative z-10">
-                        {row.price.toFixed(6)}
-                      </span>
-                    </div>
-                    <div className="text-right">{row.liquidity.toFixed(2)}</div>
-                  </motion.div>
-                ));
-              })()}
-            </div>
+      )}
+
+      <div>
+        <div className="text-xs mb-2">Tick Liquidity</div>
+        <div className="border border-border/50 rounded-md overflow-hidden">
+          <div
+            className="grid text-xs px-2 py-1 bg-secondary/40"
+            style={{ gridTemplateColumns: "70px 90px 160px 160px 160px" }}
+          >
+            <div>Tick</div>
+            <div className="text-right">Price</div>
+            <div className="text-right">Net</div>
+            <div className="text-right">Gross</div>
+            <div className="text-right">Gross USD</div>
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {tickRows.map((row) => {
+              const isCurrentTick = (() => {
+                if (!pool || pool.tick == null || pool.tickSpacing == null)
+                  return false;
+                const currentTick = parseInt(pool.tick as string, 10);
+                const spacing = parseInt(pool.tickSpacing as string, 10) || 1;
+                const activeTick = Math.floor(currentTick / spacing) * spacing;
+                return activeTick === row.tickIdx;
+              })();
+              return (
+                <motion.div
+                  key={`tick-${row.tickIdx}`}
+                  className={`grid px-2 py-1 text-xs ${
+                    isCurrentTick
+                      ? "bg-yellow-400/30 border-l-4 border-yellow-500 font-semibold text-yellow-900 dark:text-yellow-100"
+                      : "hover:bg-secondary/20"
+                  }`}
+                  style={{ gridTemplateColumns: "70px 90px 160px 160px 160px" }}
+                >
+                  <div>{row.tickIdx}</div>
+                  <div className="text-right">
+                    {isFinite(row.price) ? row.price.toFixed(6) : "-"}
+                  </div>
+                  <div className="text-right">
+                    {isFinite(row.netLiquidity)
+                      ? row.netLiquidity.toLocaleString()
+                      : "-"}
+                  </div>
+                  <div className="text-right">
+                    {isFinite(row.grossLiquidity)
+                      ? row.grossLiquidity.toLocaleString()
+                      : "-"}
+                  </div>
+                  <div className="text-right">
+                    {row.usdValueGross != null
+                      ? `$${row.usdValueGross.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                      : "-"}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </div>

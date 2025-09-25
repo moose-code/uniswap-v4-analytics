@@ -314,6 +314,8 @@ export const POOL_BY_ID_QUERY = `
       id
       chainId
       name
+      createdAtTimestamp
+      createdAtBlockNumber
       token0
       token1
       feeTier
@@ -323,6 +325,19 @@ export const POOL_BY_ID_QUERY = `
       token1Price
       tick
       tickSpacing
+      volumeToken0
+      volumeToken1
+      totalValueLockedUSD
+      totalValueLockedToken0
+      totalValueLockedToken1
+      totalValueLockedETH
+      totalValueLockedUSDUntracked
+      volumeUSD
+      untrackedVolumeUSD
+      feesUSD
+      feesUSDUntracked
+      txCount
+      hooks
     }
   }
 `;
