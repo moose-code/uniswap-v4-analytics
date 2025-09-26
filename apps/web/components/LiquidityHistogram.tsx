@@ -17,6 +17,10 @@ type Point = {
   usd: number;
   tickIdx: number;
   active?: boolean;
+  amount0?: number;
+  amount1?: number;
+  usd0?: number;
+  usd1?: number;
 };
 
 interface LiquidityHistogramProps {
@@ -153,31 +157,42 @@ export function LiquidityHistogram({
                 background: "hsl(var(--popover))",
                 border: `1px solid hsl(var(--border))`,
                 borderRadius: 6,
+                whiteSpace: "pre-line",
+                lineHeight: 1.2,
               }}
               labelStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value: any, name: any, props: any) => {
-                if (name === "usd" && props && props.payload) {
-                  const entry = props.payload;
-                  const activeEntry = data.find((d) => d.active);
-                  const activeTickIdx = activeEntry?.tickIdx;
+                if (name !== "usd" || !props || !props.payload) return value;
+                const entry = props.payload as Point;
+                const activeEntry = data.find((d) => d.active);
+                const activeTickIdx = activeEntry?.tickIdx;
 
-                  let liquidityType = "USD Liquidity";
-                  if (entry.active) {
-                    liquidityType = "Mixed Liquidity (Active Tick)";
-                  } else if (activeTickIdx !== undefined) {
-                    if (entry.tickIdx > activeTickIdx) {
-                      liquidityType = `${token0Symbol} Liquidity`;
-                    } else {
-                      liquidityType = `${token1Symbol} Liquidity`;
-                    }
-                  }
-
-                  return [
-                    `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                    liquidityType,
-                  ];
+                const usdStr = `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+                const formatAmt = (amt?: number) =>
+                  amt != null
+                    ? Number(amt).toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      })
+                    : "-";
+                if (entry.active) {
+                  const part0 = `${formatAmt(entry.amount0)} ${token0Symbol}`;
+                  const part1 = `${formatAmt(entry.amount1)} ${token1Symbol}`;
+                  const mixedValue = `${usdStr}\n(${part0} • ${part1})`;
+                  return [mixedValue, "Mixed Liquidity (Active Tick)"];
                 }
-                return value;
+
+                // Below active tick = token1; Above active = token0 (per mapping used for colors)
+                let sideLabel = `${token1Symbol} Liquidity`;
+                let sideDetail = `(${formatAmt(entry.amount1)} ${token1Symbol})`;
+                if (
+                  activeTickIdx !== undefined &&
+                  entry.tickIdx > activeTickIdx
+                ) {
+                  sideLabel = `${token0Symbol} Liquidity`;
+                  sideDetail = `(${formatAmt(entry.amount0)} ${token0Symbol})`;
+                }
+
+                return [`${usdStr} ${sideDetail}`, sideLabel];
               }}
               labelFormatter={(label: any, payload: any) => {
                 if (payload && payload[0] && payload[0].payload) {

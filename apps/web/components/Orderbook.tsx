@@ -1207,12 +1207,22 @@ export function Orderbook() {
       <div>
         <div className="text-xs mb-2">Liquidity Distribution</div>
         <LiquidityHistogram
-          data={displayTickRows.map((r) => ({
-            price: r.price,
-            usd: r.usdValueGross || 0,
-            tickIdx: r.tickIdx,
-            active: activeTickIdx != null && r.tickIdx === activeTickIdx,
-          }))}
+          data={displayTickRows.map((r) => {
+            const amt0 = r.amount0 ?? 0;
+            const amt1 = r.amount1 ?? 0;
+            const usd0 = token0USD != null ? amt0 * token0USD : 0;
+            const usd1 = token1USD != null ? amt1 * token1USD : 0;
+            return {
+              price: r.price,
+              usd: (r.usdValueGross ?? 0) || usd0 + usd1,
+              tickIdx: r.tickIdx,
+              active: activeTickIdx != null && r.tickIdx === activeTickIdx,
+              amount0: amt0,
+              amount1: amt1,
+              usd0,
+              usd1,
+            };
+          })}
           tickRange={histogramTickRange}
           onTickRangeChange={setHistogramTickRange}
           token0Symbol={token0?.symbol}
