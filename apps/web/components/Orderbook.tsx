@@ -120,6 +120,23 @@ const NETWORK_NAMES: Record<string, string> = {
   "480": "Worldchain",
 };
 
+// Explorer URLs per network
+const NETWORK_EXPLORER_URLS: Record<string, string> = {
+  "1": "https://etherscan.io",
+  "10": "https://optimistic.etherscan.io",
+  "137": "https://polygonscan.com",
+  "42161": "https://arbiscan.io",
+  "8453": "https://basescan.org",
+  "56": "https://bscscan.com",
+  "43114": "https://snowtrace.io",
+  "130": "https://explorer.unichain.org",
+};
+
+const isZeroAddress = (address?: string | null) => {
+  if (!address) return true;
+  return address.toLowerCase() === "0x0000000000000000000000000000000000000000";
+};
+
 const extractChainId = (id: string): string => {
   if (id.includes("_")) {
     const chainId = id.split("_")[0];
@@ -953,68 +970,14 @@ export function Orderbook() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div ref={dropdownRef} className="relative flex-1 max-w-4xl">
-          <input
-            className="w-full px-3 py-2 rounded-md border border-border/50 bg-background pr-20 text-sm font-mono"
-            value={poolId}
-            onChange={(e) => setPoolId(e.target.value)}
-            placeholder="Pool ID (e.g. 1_0x...)"
-          />
-          <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs text-muted-foreground hover:text-foreground rounded"
-            onClick={() => setShowPoolDropdown(!showPoolDropdown)}
-            title="Select from top pools"
-          >
-            ▼
-          </button>
-          {showPoolDropdown && topPools.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/50 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
-              {topPools.map((pool) => (
-                <button
-                  key={pool.id}
-                  className="w-full px-3 py-2 text-left hover:bg-secondary/40 border-b border-border/20 last:border-b-0"
-                  onClick={() => {
-                    setPoolId(pool.id);
-                    setShowPoolDropdown(false);
-                  }}
-                >
-                  <div className="text-sm font-medium truncate">
-                    {pool.name ||
-                      `${pool.token0?.slice(0, 6)}.../${pool.token1?.slice(0, 6)}...`}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    TVL: $
-                    {parseFloat(pool.totalValueLockedUSD || "0").toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 0 }
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button
-          className="px-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => setRefreshNonce((n) => n + 1)}
-          title="Refresh"
-        >
-          ↻
-        </button>
-      </div>
-      <div className="text-[10px] text-muted-foreground">
-        Enter chainId_poolId manually or select from top pools by TVL
-      </div>
-
       {loading && <div>Loading...</div>}
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
       {pool && (
         <div className="bg-gradient-to-r from-background to-secondary/5 rounded-lg border border-border/30 p-4 space-y-4">
           {/* Header Section */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-3">
                 <div className="text-lg font-semibold text-foreground">
                   {token0?.symbol ?? "Token0"} / {token1?.symbol ?? "Token1"}
@@ -1023,14 +986,92 @@ export function Orderbook() {
                   {(Number(pool.feeTier) / 1e4).toFixed(2)}%
                 </div>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {NETWORK_NAMES[pool.chainId] || `Chain ${pool.chainId}`} •
-                Created{" "}
-                {pool.createdAtTimestamp
-                  ? new Date(
-                      Number(pool.createdAtTimestamp) * 1000
-                    ).toLocaleDateString()
-                  : "Unknown"}
+              <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                <span>
+                  {NETWORK_NAMES[pool.chainId] || `Chain ${pool.chainId}`}
+                </span>
+                <span>•</span>
+                <span className="whitespace-nowrap text-[11px]">
+                  Created{" "}
+                  {pool.createdAtTimestamp
+                    ? new Date(
+                        Number(pool.createdAtTimestamp) * 1000
+                      ).toLocaleDateString(undefined, {
+                        year: "2-digit",
+                        month: "2-digit",
+                        day: "2-digit",
+                      })
+                    : "Unknown"}
+                </span>
+                <span>•</span>
+                {pool.hooks && !isZeroAddress(pool.hooks) ? (
+                  <a
+                    className="px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    href={`${NETWORK_EXPLORER_URLS[pool.chainId] || "https://etherscan.io"}/address/${pool.hooks}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View hook contract"
+                  >
+                    Hooked
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">Non-hooked</span>
+                )}
+              </div>
+            </div>
+            {/* Compact Pool Picker on the right */}
+            <div className="flex flex-col items-end gap-1">
+              <div ref={dropdownRef} className="relative">
+                <input
+                  className="w-[360px] max-w-[48vw] px-2 py-1 rounded-md border border-border/50 bg-background pr-14 text-xs font-mono"
+                  value={poolId}
+                  onChange={(e) => setPoolId(e.target.value)}
+                  placeholder="chainId_poolId (e.g. 1_0x...)"
+                />
+                <button
+                  className="absolute right-8 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground rounded"
+                  onClick={() => setShowPoolDropdown(!showPoolDropdown)}
+                  title="Select from top pools"
+                >
+                  ▼
+                </button>
+                {showPoolDropdown && topPools.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-background border border-border/50 rounded-md shadow-lg z-50 max-h-64 overflow-y-auto">
+                    {topPools.map((pool) => (
+                      <button
+                        key={pool.id}
+                        className="w-full px-3 py-2 text-left hover:bg-secondary/40 border-b border-border/20 last:border-b-0"
+                        onClick={() => {
+                          setPoolId(pool.id);
+                          setShowPoolDropdown(false);
+                        }}
+                      >
+                        <div className="text-sm font-medium truncate">
+                          {pool.name ||
+                            `${pool.token0?.slice(0, 6)}.../${pool.token1?.slice(0, 6)}...`}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          TVL: $
+                          {parseFloat(
+                            pool.totalValueLockedUSD || "0"
+                          ).toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                          })}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setRefreshNonce((n) => n + 1)}
+                  title="Refresh"
+                >
+                  ↻
+                </button>
+              </div>
+              <div className="text-[10px] text-muted-foreground">
+                Enter chainId_poolId to view any pool
               </div>
             </div>
           </div>
