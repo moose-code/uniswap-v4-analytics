@@ -23,12 +23,16 @@ interface LiquidityHistogramProps {
   data: Point[];
   tickRange?: number;
   onTickRangeChange?: (range: number) => void;
+  token0Symbol?: string;
+  token1Symbol?: string;
 }
 
 export function LiquidityHistogram({
   data,
   tickRange = 60,
   onTickRangeChange,
+  token0Symbol = "Token0",
+  token1Symbol = "Token1",
 }: LiquidityHistogramProps) {
   const [showTicks, setShowTicks] = useState(false);
   const maxUsd = Math.max(0, ...data.map((d) => d.usd || 0));
@@ -78,10 +82,41 @@ export function LiquidityHistogram({
                 <option value={200}>200</option>
                 <option value={500}>500</option>
                 <option value={1000}>1000</option>
+                <option value={2000}>2000</option>
+                <option value={5000}>5000</option>
               </select>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-6 mb-3 text-xs">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded"
+            style={{ backgroundColor: "hsl(15 75% 65% / 0.7)" }}
+          ></div>
+          <span className="text-muted-foreground">
+            {token0Symbol} Liquidity
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded"
+            style={{ backgroundColor: "hsl(48 96% 53% / 0.9)" }}
+          ></div>
+          <span className="text-muted-foreground">Active Tick (Mixed)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded"
+            style={{ backgroundColor: "hsl(217 70% 70% / 0.7)" }}
+          ></div>
+          <span className="text-muted-foreground">
+            {token1Symbol} Liquidity
+          </span>
+        </div>
       </div>
 
       <div className="h-56 w-full">
@@ -121,10 +156,25 @@ export function LiquidityHistogram({
               }}
               labelStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value: any, name: any, props: any) => {
-                if (name === "usd") {
+                if (name === "usd" && props && props.payload) {
+                  const entry = props.payload;
+                  const activeEntry = data.find((d) => d.active);
+                  const activeTickIdx = activeEntry?.tickIdx;
+
+                  let liquidityType = "USD Liquidity";
+                  if (entry.active) {
+                    liquidityType = "Mixed Liquidity (Active Tick)";
+                  } else if (activeTickIdx !== undefined) {
+                    if (entry.tickIdx > activeTickIdx) {
+                      liquidityType = `${token0Symbol} Liquidity`;
+                    } else {
+                      liquidityType = `${token1Symbol} Liquidity`;
+                    }
+                  }
+
                   return [
                     `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                    "USD Liquidity",
+                    liquidityType,
                   ];
                 }
                 return value;
@@ -143,16 +193,30 @@ export function LiquidityHistogram({
             />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
             <Bar dataKey="usd" radius={[2, 2, 0, 0]} isAnimationActive={false}>
-              {data.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={
-                    entry.active
-                      ? "hsl(48 96% 53% / 0.9)"
-                      : "hsl(var(--primary) / 0.7)"
+              {data.map((entry, index) => {
+                // Find the active tick to determine position relative to it
+                const activeEntry = data.find((d) => d.active);
+                const activeTickIdx = activeEntry?.tickIdx;
+
+                let fillColor;
+                if (entry.active) {
+                  // Active tick - mixed liquidity (gradient or special color)
+                  fillColor = "hsl(48 96% 53% / 0.9)"; // Bright yellow for active
+                } else if (activeTickIdx !== undefined) {
+                  if (entry.tickIdx > activeTickIdx) {
+                    // Above active tick - Token0 (swapped mapping per user feedback)
+                    fillColor = "hsl(15 75% 65% / 0.7)";
+                  } else {
+                    // Below active tick - Token1
+                    fillColor = "hsl(217 70% 70% / 0.7)";
                   }
-                />
-              ))}
+                } else {
+                  // Fallback
+                  fillColor = "hsl(var(--primary) / 0.7)";
+                }
+
+                return <Cell key={`cell-${index}`} fill={fillColor} />;
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

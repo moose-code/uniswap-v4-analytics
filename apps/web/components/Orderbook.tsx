@@ -1011,124 +1011,168 @@ export function Orderbook() {
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
       {pool && (
-        <div className="space-y-3">
-          <div className="text-sm text-muted-foreground">
-            Pair: {token0?.symbol ?? "Token0"} / {token1?.symbol ?? "Token1"} •
-            Fee: {(Number(pool.feeTier) / 1e4).toFixed(2)}%
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-2xl font-semibold">
-              {(invertPrices && currentPrice > 0
-                ? 1 / currentPrice
-                : currentPrice
-              ).toLocaleString(undefined, {
-                maximumFractionDigits: 6,
-              })}
-            </div>
-            <button
-              className="text-xs px-2 py-1 rounded-md border border-border/50 hover:bg-secondary/40"
-              onClick={() => setInvertPrices((v) => !v)}
-            >
-              {invertPrices
-                ? `${token0?.symbol ?? "Token0"}/${token1?.symbol ?? "Token1"}`
-                : `${token1?.symbol ?? "Token1"}/${token0?.symbol ?? "Token0"}`}
-            </button>
-          </div>
-          <div className="text-xs">
-            <div>
-              1 {token0?.symbol ?? "Token0"} ={" "}
-              {currentPrice > 0
-                ? currentPrice.toLocaleString(undefined, {
-                    maximumFractionDigits: 6,
-                  })
-                : "-"}{" "}
-              {token1?.symbol ?? "Token1"}
-            </div>
-            <div>
-              1 {token1?.symbol ?? "Token1"} ={" "}
-              {currentPrice > 0
-                ? (1 / currentPrice).toLocaleString(undefined, {
-                    maximumFractionDigits: 8,
-                  })
-                : "-"}{" "}
-              {token0?.symbol ?? "Token0"}
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {lastPriceUSD
-              ? `Last price: $${lastPriceUSD.toLocaleString(undefined, {
-                  maximumFractionDigits: 4,
-                })} per ${token0?.symbol}`
-              : ""}
-            {token1USD
-              ? ` • ${token1?.symbol} ≈ $${token1USD.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}`
-              : ""}
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">TVL</div>
-              <div className="font-medium">
-                {pool.totalValueLockedUSD
-                  ? `$${Number(pool.totalValueLockedUSD).toLocaleString(
-                      undefined,
-                      {
-                        maximumFractionDigits: 0,
-                      }
-                    )}`
-                  : "-"}
+        <div className="bg-gradient-to-r from-background to-secondary/5 rounded-xl border border-border/30 p-6 space-y-6">
+          {/* Header Section */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="text-lg font-semibold text-foreground">
+                  {token0?.symbol ?? "Token0"} / {token1?.symbol ?? "Token1"}
+                </div>
+                <div className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                  {(Number(pool.feeTier) / 1e4).toFixed(2)}%
+                </div>
               </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Volume</div>
-              <div className="font-medium">
-                {pool.volumeUSD
-                  ? `$${Number(pool.volumeUSD).toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Fees</div>
-              <div className="font-medium">
-                {pool.feesUSD
-                  ? `$${Number(pool.feesUSD).toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}`
-                  : "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Tx Count</div>
-              <div className="font-medium">
-                {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
-              </div>
-            </div>
-
-            <div className="rounded-md border border-border/50 p-2 col-span-2">
-              <div className="text-muted-foreground">Hook</div>
-              <div className="font-mono text-[11px] break-all">
-                {pool.hooks ?? "-"}
-              </div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Current Tick</div>
-              <div className="font-medium">{pool.tick ?? "-"}</div>
-            </div>
-            <div className="rounded-md border border-border/50 p-2">
-              <div className="text-muted-foreground">Created</div>
-              <div className="font-medium">
+              <div className="text-sm text-muted-foreground">
+                {pool.chainId === "1"
+                  ? "Ethereum"
+                  : pool.chainId === "137"
+                    ? "Polygon"
+                    : pool.chainId === "42161"
+                      ? "Arbitrum"
+                      : pool.chainId === "10"
+                        ? "Optimism"
+                        : pool.chainId === "8453"
+                          ? "Base"
+                          : pool.chainId === "56"
+                            ? "BSC"
+                            : pool.chainId === "43114"
+                              ? "Avalanche"
+                              : `Chain ${pool.chainId}`}{" "}
+                • Created{" "}
                 {pool.createdAtTimestamp
                   ? new Date(
                       Number(pool.createdAtTimestamp) * 1000
-                    ).toLocaleString()
-                  : "-"}
+                    ).toLocaleDateString()
+                  : "Unknown"}
               </div>
             </div>
           </div>
+
+          {/* Price Section */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <div className="flex items-baseline gap-3">
+                <div className="text-3xl font-bold tracking-tight">
+                  {(invertPrices && currentPrice > 0
+                    ? 1 / currentPrice
+                    : currentPrice
+                  ).toLocaleString(undefined, {
+                    maximumFractionDigits: 6,
+                  })}
+                </div>
+                <button
+                  className="px-3 py-1 text-xs font-medium rounded-lg border border-border/50 hover:bg-secondary/50 transition-colors"
+                  onClick={() => setInvertPrices((v) => !v)}
+                >
+                  {invertPrices
+                    ? `${token0?.symbol}/${token1?.symbol}`
+                    : `${token1?.symbol}/${token0?.symbol}`}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div>
+                  1 {token0?.symbol} ={" "}
+                  {currentPrice > 0
+                    ? currentPrice.toLocaleString(undefined, {
+                        maximumFractionDigits: 6,
+                      })
+                    : "-"}{" "}
+                  {token1?.symbol}
+                </div>
+                <div className="text-xs">•</div>
+                <div>
+                  1 {token1?.symbol} ={" "}
+                  {currentPrice > 0
+                    ? (1 / currentPrice).toLocaleString(undefined, {
+                        maximumFractionDigits: 8,
+                      })
+                    : "-"}{" "}
+                  {token0?.symbol}
+                </div>
+              </div>
+            </div>
+
+            {(lastPriceUSD || token1USD) && (
+              <div className="text-right space-y-1">
+                {lastPriceUSD && (
+                  <div className="text-lg font-semibold">
+                    $
+                    {lastPriceUSD.toLocaleString(undefined, {
+                      maximumFractionDigits: 4,
+                    })}
+                  </div>
+                )}
+                {token1USD && (
+                  <div className="text-sm text-muted-foreground">
+                    {token1?.symbol} ≈ $
+                    {token1USD.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                TVL
+              </div>
+              <div className="text-base font-bold">
+                {pool.totalValueLockedUSD
+                  ? `$${Number(pool.totalValueLockedUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Volume
+              </div>
+              <div className="text-base font-bold">
+                {pool.volumeUSD
+                  ? `$${Number(pool.volumeUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Fees
+              </div>
+              <div className="text-base font-bold">
+                {pool.feesUSD
+                  ? `$${Number(pool.feesUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                  : "-"}
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                Transactions
+              </div>
+              <div className="text-base font-bold">
+                {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
+              </div>
+            </div>
+          </div>
+
+          {/* Hook Address */}
+          {pool.hooks &&
+            pool.hooks !== "0x0000000000000000000000000000000000000000" && (
+              <div className="rounded-lg border border-border/30 bg-secondary/10 p-4">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Hook Contract
+                </div>
+                <div className="font-mono text-sm break-all text-foreground/90">
+                  {pool.hooks}
+                </div>
+              </div>
+            )}
         </div>
       )}
 
@@ -1144,6 +1188,8 @@ export function Orderbook() {
           }))}
           tickRange={histogramTickRange}
           onTickRangeChange={setHistogramTickRange}
+          token0Symbol={token0?.symbol}
+          token1Symbol={token1?.symbol}
         />
       </div>
 
