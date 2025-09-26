@@ -1011,7 +1011,7 @@ export function Orderbook() {
       {error && <div className="text-red-500 text-sm">{error}</div>}
 
       {pool && (
-        <div className="bg-gradient-to-r from-background to-secondary/5 rounded-xl border border-border/30 p-6 space-y-6">
+        <div className="bg-gradient-to-r from-background to-secondary/5 rounded-lg border border-border/30 p-4 space-y-4">
           {/* Header Section */}
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -1024,22 +1024,8 @@ export function Orderbook() {
                 </div>
               </div>
               <div className="text-sm text-muted-foreground">
-                {pool.chainId === "1"
-                  ? "Ethereum"
-                  : pool.chainId === "137"
-                    ? "Polygon"
-                    : pool.chainId === "42161"
-                      ? "Arbitrum"
-                      : pool.chainId === "10"
-                        ? "Optimism"
-                        : pool.chainId === "8453"
-                          ? "Base"
-                          : pool.chainId === "56"
-                            ? "BSC"
-                            : pool.chainId === "43114"
-                              ? "Avalanche"
-                              : `Chain ${pool.chainId}`}{" "}
-                • Created{" "}
+                {NETWORK_NAMES[pool.chainId] || `Chain ${pool.chainId}`} •
+                Created{" "}
                 {pool.createdAtTimestamp
                   ? new Date(
                       Number(pool.createdAtTimestamp) * 1000
@@ -1051,9 +1037,9 @@ export function Orderbook() {
 
           {/* Price Section */}
           <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <div className="flex items-baseline gap-3">
-                <div className="text-3xl font-bold tracking-tight">
+            <div className="space-y-1">
+              <div className="flex items-baseline gap-2">
+                <div className="text-2xl font-bold tracking-tight">
                   {(invertPrices && currentPrice > 0
                     ? 1 / currentPrice
                     : currentPrice
@@ -1062,7 +1048,7 @@ export function Orderbook() {
                   })}
                 </div>
                 <button
-                  className="px-3 py-1 text-xs font-medium rounded-lg border border-border/50 hover:bg-secondary/50 transition-colors"
+                  className="px-2 py-0.5 text-xs font-medium rounded border border-border/50 hover:bg-secondary/50 transition-colors"
                   onClick={() => setInvertPrices((v) => !v)}
                 >
                   {invertPrices
@@ -1071,7 +1057,7 @@ export function Orderbook() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div>
                   1 {token0?.symbol} ={" "}
                   {currentPrice > 0
@@ -1081,7 +1067,7 @@ export function Orderbook() {
                     : "-"}{" "}
                   {token1?.symbol}
                 </div>
-                <div className="text-xs">•</div>
+                <div>•</div>
                 <div>
                   1 {token1?.symbol} ={" "}
                   {currentPrice > 0
@@ -1095,9 +1081,9 @@ export function Orderbook() {
             </div>
 
             {(lastPriceUSD || token1USD) && (
-              <div className="text-right space-y-1">
+              <div className="text-right space-y-0.5">
                 {lastPriceUSD && (
-                  <div className="text-lg font-semibold">
+                  <div className="text-base font-semibold">
                     $
                     {lastPriceUSD.toLocaleString(undefined, {
                       maximumFractionDigits: 4,
@@ -1105,7 +1091,7 @@ export function Orderbook() {
                   </div>
                 )}
                 {token1USD && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {token1?.symbol} ≈ $
                     {token1USD.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
@@ -1117,45 +1103,45 @@ export function Orderbook() {
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 TVL
               </div>
-              <div className="text-base font-bold">
+              <div className="text-sm font-bold">
                 {pool.totalValueLockedUSD
                   ? `$${Number(pool.totalValueLockedUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                   : "-"}
               </div>
             </div>
 
-            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Volume
               </div>
-              <div className="text-base font-bold">
+              <div className="text-sm font-bold">
                 {pool.volumeUSD
                   ? `$${Number(pool.volumeUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                   : "-"}
               </div>
             </div>
 
-            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Fees
               </div>
-              <div className="text-base font-bold">
+              <div className="text-sm font-bold">
                 {pool.feesUSD
                   ? `$${Number(pool.feesUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                   : "-"}
               </div>
             </div>
 
-            <div className="group relative overflow-hidden rounded-lg border border-border/40 bg-background/50 p-4 hover:border-border/60 transition-colors">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Transactions
               </div>
-              <div className="text-base font-bold">
+              <div className="text-sm font-bold">
                 {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
               </div>
             </div>
