@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -40,6 +40,20 @@ export function LiquidityHistogram({
 }: LiquidityHistogramProps) {
   const [showTicks, setShowTicks] = useState(false);
   const maxUsd = Math.max(0, ...data.map((d) => d.usd || 0));
+
+  // Transform data for consistent bar widths
+  const chartData = useMemo(
+    () =>
+      data.map((d) => ({
+        ...d,
+        // Always use total USD for bar height to maintain consistent widths
+        totalUsd: d.usd,
+        // Track components for tooltip and coloring
+        usd0Component: d.active ? (d.usd0 ?? 0) : 0,
+        usd1Component: d.active ? (d.usd1 ?? 0) : 0,
+      })),
+    [data]
+  );
 
   return (
     <div className="border border-border/50 rounded-md p-3 bg-secondary/5">
@@ -107,10 +121,15 @@ export function LiquidityHistogram({
         </div>
         <div className="flex items-center gap-2">
           <div
-            className="w-3 h-3 rounded"
-            style={{ backgroundColor: "hsl(48 96% 53% / 0.9)" }}
+            className="w-3 h-3 rounded border-2 border-foreground"
+            style={{
+              background:
+                "linear-gradient(to bottom, hsl(15 75% 65% / 0.8) 50%, hsl(217 70% 70% / 0.8) 50%)",
+            }}
           ></div>
-          <span className="text-muted-foreground">Active Tick (Mixed)</span>
+          <span className="text-muted-foreground">
+            <strong>Active Tick</strong> (Mixed Liquidity)
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <div
@@ -126,7 +145,7 @@ export function LiquidityHistogram({
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
+            data={chartData}
             margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
           >
             <XAxis
@@ -162,18 +181,22 @@ export function LiquidityHistogram({
               }}
               labelStyle={{ color: "hsl(var(--foreground))" }}
               formatter={(value: any, name: any, props: any) => {
-                if (name !== "usd" || !props || !props.payload) return value;
-                const entry = props.payload as Point;
+                if (name !== "totalUsd" || !props || !props.payload)
+                  return value;
+                const entry = props.payload;
                 const activeEntry = data.find((d) => d.active);
                 const activeTickIdx = activeEntry?.tickIdx;
 
-                const usdStr = `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
                 const formatAmt = (amt?: number) =>
                   amt != null
                     ? Number(amt).toLocaleString(undefined, {
                         maximumFractionDigits: 6,
                       })
                     : "-";
+
+                const usdStr = `$${Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+                // Handle active tick with breakdown
                 if (entry.active) {
                   const part0 = `${formatAmt(entry.amount0)} ${token0Symbol}`;
                   const part1 = `${formatAmt(entry.amount1)} ${token1Symbol}`;
@@ -207,32 +230,75 @@ export function LiquidityHistogram({
               }}
             />
             <ReferenceLine y={0} stroke="hsl(var(--border))" />
-            <Bar dataKey="usd" radius={[2, 2, 0, 0]} isAnimationActive={false}>
-              {data.map((entry, index) => {
+
+            {/* Single bar component with custom rendering */}
+            <Bar
+              dataKey="totalUsd"
+              radius={[2, 2, 0, 0]}
+              isAnimationActive={false}
+            >
+              {chartData.map((entry, index) => {
                 // Find the active tick to determine position relative to it
                 const activeEntry = data.find((d) => d.active);
                 const activeTickIdx = activeEntry?.tickIdx;
 
-                let fillColor;
                 if (entry.active) {
-                  // Active tick - mixed liquidity (gradient or special color)
-                  fillColor = "hsl(48 96% 53% / 0.9)"; // Bright yellow for active
-                } else if (activeTickIdx !== undefined) {
-                  if (entry.tickIdx > activeTickIdx) {
-                    // Above active tick - Token0 (swapped mapping per user feedback)
-                    fillColor = "hsl(15 75% 65% / 0.7)";
-                  } else {
-                    // Below active tick - Token1
-                    fillColor = "hsl(217 70% 70% / 0.7)";
-                  }
+                  // For active tick, use gradient with subtle black outline
+                  return (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill="url(#activeGradient)"
+                      stroke="hsl(var(--foreground))"
+                      strokeWidth={0.5}
+                    />
+                  );
                 } else {
-                  // Fallback
-                  fillColor = "hsl(var(--primary) / 0.7)";
+                  // Regular coloring for non-active ticks
+                  let fillColor;
+                  if (activeTickIdx !== undefined) {
+                    if (entry.tickIdx > activeTickIdx) {
+                      // Above active tick - Token0
+                      fillColor = "hsl(15 75% 65% / 0.7)";
+                    } else {
+                      // Below active tick - Token1
+                      fillColor = "hsl(217 70% 70% / 0.7)";
+                    }
+                  } else {
+                    // Fallback
+                    fillColor = "hsl(var(--primary) / 0.7)";
+                  }
+                  return <Cell key={`cell-${index}`} fill={fillColor} />;
                 }
-
-                return <Cell key={`cell-${index}`} fill={fillColor} />;
               })}
             </Bar>
+
+            {/* Define gradient for active tick */}
+            <defs>
+              <linearGradient id="activeGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(15 75% 65% / 0.8)" />
+                <stop
+                  offset={`${
+                    chartData.find((d) => d.active)
+                      ? (chartData.find((d) => d.active)!.usd0Component /
+                          chartData.find((d) => d.active)!.totalUsd) *
+                        100
+                      : 50
+                  }%`}
+                  stopColor="hsl(15 75% 65% / 0.8)"
+                />
+                <stop
+                  offset={`${
+                    chartData.find((d) => d.active)
+                      ? (chartData.find((d) => d.active)!.usd0Component /
+                          chartData.find((d) => d.active)!.totalUsd) *
+                        100
+                      : 50
+                  }%`}
+                  stopColor="hsl(217 70% 70% / 0.8)"
+                />
+                <stop offset="100%" stopColor="hsl(217 70% 70% / 0.8)" />
+              </linearGradient>
+            </defs>
           </BarChart>
         </ResponsiveContainer>
       </div>
