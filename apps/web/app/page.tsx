@@ -20,6 +20,7 @@ import { PulsePoolsColumn } from "@/components/PulsePoolsColumn";
 import { LiquidityEventsColumn } from "@/components/LiquidityEventsColumn";
 import { LargestLiquidityEventsColumn } from "@/components/LargestLiquidityEventsColumn";
 import { ArbitrageSummary } from "@/components/ArbitrageSummary";
+import { Orderbook } from "@/components/Orderbook";
 
 const NETWORK_NAMES: Record<string, string> = {
   "1": "Ethereum",
@@ -56,6 +57,7 @@ const TABS = [
   { id: "hooks", label: "Hooks" },
   { id: "hook-info", label: "Hook Information" },
   { id: "arbitrage", label: "Arbitrage" },
+  { id: "orderbook", label: "Orderbook" },
   { id: "apis", label: "APIs" },
 ];
 
@@ -405,6 +407,17 @@ export default function Page() {
                   transition={{ duration: 0.2 }}
                 >
                   <ArbitrageSummary />
+                </motion.div>
+              )}
+              {activeTab === "orderbook" && (
+                <motion.div
+                  key="orderbook"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Orderbook />
                 </motion.div>
               )}
               {activeTab === "apis" && (
