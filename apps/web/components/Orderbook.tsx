@@ -1230,13 +1230,14 @@ export function Orderbook() {
         />
       </div>
 
-      {/* Recent Pool Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Commented out: Recent Pool Activity */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PoolRecentSwaps poolId={poolId} />
         <PoolRecentLiquidity poolId={poolId} />
-      </div>
+      </div> */}
 
-      <div>
+      {/* Commented out: Tick Liquidity Table */}
+      {/* <div>
         <div className="text-xs mb-2">Tick Liquidity</div>
         <div className="border border-border/50 rounded-md overflow-hidden">
           <div className="max-h-72 overflow-auto">
@@ -1314,7 +1315,7 @@ export function Orderbook() {
             })}
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
