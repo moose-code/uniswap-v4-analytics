@@ -206,7 +206,7 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
       const remaining = current.slice(1);
       setSwaps((prev) => {
         if (prev.some((s) => s.id === nextSwap.id)) return prev;
-        return [nextSwap, ...prev.slice(0, 24)];
+        return [nextSwap, ...prev.slice(0, 14)];
       });
       if (remaining.length > 0) {
         const timeout = Math.max(50, 250 - remaining.length * 10);
@@ -238,7 +238,7 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
         }));
 
         if (isFirstLoadRef.current) {
-          setSwaps(swapsWithIds.slice(0, 25));
+          setSwaps(swapsWithIds.slice(0, 15));
           isFirstLoadRef.current = false;
         } else {
           const newOnes = swapsWithIds.filter(
@@ -310,7 +310,7 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
       </div>
 
       <div
-        className="md:max-h-[400px] max-h-[350px] overflow-y-auto p-2 relative"
+        className="md:max-h-[280px] max-h-[240px] overflow-y-auto p-1.5 relative"
         style={{ scrollBehavior: "smooth" }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
@@ -336,7 +336,7 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
                 return (
                   <motion.div
                     key={`swap_${swap.uniqueId}`}
-                    className="bg-secondary/30 rounded-lg p-2 overflow-hidden hover:bg-secondary/50 transition-colors group"
+                    className="bg-secondary/30 rounded-lg p-1.5 overflow-hidden hover:bg-secondary/50 transition-colors group"
                     initial={{
                       opacity: 0,
                       y: -20,
@@ -367,12 +367,12 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
                         {networkName}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 font-medium text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 font-medium text-[11px]">
                         {token0Symbol} → {token1Symbol}
                       </div>
                       <motion.div
-                        className="text-xs font-mono text-pink-500"
+                        className="text-[11px] font-mono text-pink-500"
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: [0.8, 1.1, 1] }}
                         transition={{ duration: 0.3 }}
@@ -458,7 +458,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
       const remaining = current.slice(1);
       setEvents((prev) => {
         if (prev.some((e) => e.id === next.id)) return prev;
-        return [next, ...prev.slice(0, 24)];
+        return [next, ...prev.slice(0, 14)];
       });
       if (remaining.length > 0) {
         const timeout = Math.max(50, 250 - remaining.length * 10);
@@ -532,7 +532,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
         }));
 
         if (isFirstLoadRef.current) {
-          setEvents(eventsWithIds.slice(0, 25));
+          setEvents(eventsWithIds.slice(0, 15));
           isFirstLoadRef.current = false;
         } else {
           const newOnes = eventsWithIds.filter(
@@ -612,7 +612,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
       </div>
 
       <div
-        className="md:max-h-[400px] max-h-[350px] overflow-y-auto p-2 relative"
+        className="md:max-h-[280px] max-h-[240px] overflow-y-auto p-1.5 relative"
         style={{ scrollBehavior: "smooth" }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
@@ -645,7 +645,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
                 return (
                   <motion.div
                     key={event.uniqueId}
-                    className="bg-secondary/30 rounded-lg p-2 overflow-hidden hover:bg-secondary/50 transition-colors group"
+                    className="bg-secondary/30 rounded-lg p-1 overflow-hidden hover:bg-secondary/50 transition-colors group"
                     initial={{
                       opacity: 0,
                       y: -20,
@@ -668,30 +668,27 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
                     }}
                     layout="position"
                   >
-                    <div className="flex justify-between items-center mb-0.5">
-                      <div className="text-[11px] font-medium text-muted-foreground">
+                    <div className="flex justify-between items-center mb-0">
+                      <div className="text-[10px] leading-tight font-medium text-muted-foreground">
                         {timestamp}
                       </div>
-                      <div className="text-[10px] bg-secondary/50 px-2 py-0.5 rounded-full">
+                      <div className="text-[10px] leading-tight bg-secondary/50 px-2 py-0.5 rounded-full">
                         {networkName}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 leading-tight">
                         <span
-                          className={`font-medium text-xs ${eventTypeColor}`}
+                          className={`font-medium text-[11px] leading-tight ${eventTypeColor}`}
                         >
                           {eventTypeLabel}
                         </span>
-                        <span className="ml-1 font-medium text-xs">
+                        <span className="ml-1 font-medium text-[11px] leading-tight">
                           {token0Symbol}/{token1Symbol}
                         </span>
-                        <div className="text-[11px] text-muted-foreground truncate">
-                          {poolName}
-                        </div>
                       </div>
                       <motion.div
-                        className="text-xs font-mono text-pink-500"
+                        className="text-[10px] font-mono text-pink-500"
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: [0.8, 1.1, 1] }}
                         transition={{ duration: 0.3 }}
@@ -755,7 +752,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
                     </motion.div>
 
                     <motion.div
-                      className="text-[11px] mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block"
+                      className="text-[10px] mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block"
                       initial={{ height: 0, opacity: 0, overflow: "hidden" }}
                       animate={{
                         height: "auto",
@@ -764,11 +761,11 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
                       }}
                       style={{ display: "none", transition: "all 0.2s" }}
                     >
-                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <span className="whitespace-nowrap font-medium">
                           Tx:
                         </span>
-                        <span className="text-[11px] font-mono">
+                        <span className="text-[10px] font-mono">
                           {event.transaction.substring(0, 6)}...
                           {event.transaction.substring(
                             event.transaction.length - 4
@@ -1222,7 +1219,7 @@ export function Orderbook() {
           usdValueGross = null;
         }
       }
-      return {
+    return {
         tickIdx,
         price,
         netLiquidity,
@@ -1329,10 +1326,10 @@ export function Orderbook() {
             {/* Compact Pool Picker on the right */}
             <div className="flex flex-col items-end gap-1">
               <div ref={dropdownRef} className="relative">
-                <input
+        <input
                   className="w-[360px] max-w-[48vw] px-2 py-1 rounded-md border border-border/50 bg-background pr-14 text-xs font-mono"
-                  value={poolId}
-                  onChange={(e) => setPoolId(e.target.value)}
+          value={poolId}
+          onChange={(e) => setPoolId(e.target.value)}
                   placeholder="chainId_poolId (e.g. 1_0x...)"
                 />
                 <button
@@ -1376,11 +1373,11 @@ export function Orderbook() {
                 >
                   ↻
                 </button>
-              </div>
-              <div className="text-[10px] text-muted-foreground">
+      </div>
+      <div className="text-[10px] text-muted-foreground">
                 Enter chainId_poolId to view any pool
-              </div>
-            </div>
+      </div>
+          </div>
           </div>
 
           {/* Price Section */}
@@ -1391,19 +1388,19 @@ export function Orderbook() {
                   {(invertPrices && currentPrice > 0
                     ? 1 / currentPrice
                     : currentPrice
-                  ).toLocaleString(undefined, {
-                    maximumFractionDigits: 6,
-                  })}
-                </div>
-                <button
+              ).toLocaleString(undefined, {
+                maximumFractionDigits: 6,
+              })}
+            </div>
+            <button
                   className="px-2 py-0.5 text-xs font-medium rounded border border-border/50 hover:bg-secondary/50 transition-colors"
-                  onClick={() => setInvertPrices((v) => !v)}
-                >
-                  {invertPrices
+              onClick={() => setInvertPrices((v) => !v)}
+            >
+              {invertPrices
                     ? `${token0?.symbol}/${token1?.symbol}`
                     : `${token1?.symbol}/${token0?.symbol}`}
-                </button>
-              </div>
+            </button>
+          </div>
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div>
@@ -1434,7 +1431,7 @@ export function Orderbook() {
                   <div className="text-base font-semibold">
                     $
                     {lastPriceUSD.toLocaleString(undefined, {
-                      maximumFractionDigits: 4,
+                  maximumFractionDigits: 4,
                     })}
                   </div>
                 )}
@@ -1442,7 +1439,7 @@ export function Orderbook() {
                   <div className="text-xs text-muted-foreground">
                     {token1?.symbol} ≈ $
                     {token1USD.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
+                  maximumFractionDigits: 2,
                     })}
                   </div>
                 )}
@@ -1473,7 +1470,7 @@ export function Orderbook() {
               >
                 ${poolStats.tvlUSD.toLocaleString()}
               </motion.div>
-            </div>
+                    </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
@@ -1496,7 +1493,7 @@ export function Orderbook() {
               >
                 ${poolStats.volumeUSD.toLocaleString()}
               </motion.div>
-            </div>
+                </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
@@ -1519,12 +1516,12 @@ export function Orderbook() {
               >
                 ${poolStats.feesUSD.toLocaleString()}
               </motion.div>
-            </div>
+                    </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Transactions
-              </div>
+                </div>
               <motion.div
                 ref={txRef}
                 className="text-sm font-bold"
@@ -1542,8 +1539,8 @@ export function Orderbook() {
               >
                 {poolStats.txCount.toLocaleString()}
               </motion.div>
+              </div>
             </div>
-          </div>
 
           {/* Hook Address */}
           {pool.hooks &&
@@ -1551,17 +1548,17 @@ export function Orderbook() {
               <div className="rounded-lg border border-border/30 bg-secondary/10 p-4">
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                   Hook Contract
-                </div>
+            </div>
                 <div className="font-mono text-sm break-all text-foreground/90">
                   {pool.hooks}
-                </div>
+          </div>
               </div>
             )}
         </div>
       )}
 
       {/* Liquidity Histogram (Recharts) */}
-      <div>
+        <div>
         <div className="text-xs mb-2">Liquidity Distribution</div>
         <LiquidityHistogram
           data={displayTickRows.map((r) => {
