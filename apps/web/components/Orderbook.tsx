@@ -69,7 +69,7 @@ type Tick = {
 };
 
 const DEFAULT_POOL_ID =
-  "1_0x20c3a15e34e5d88aeba004b0753af69e4f6bea80eae2263f7a92e919cd33cc56";
+  "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9";
 
 // Helper functions from Pulse page
 const formatUSD = (value: string): string => {
@@ -821,7 +821,7 @@ export function Orderbook() {
   const [refreshNonce, setRefreshNonce] = useState<number>(0);
   const [topPools, setTopPools] = useState<any[]>([]);
   const [showPoolDropdown, setShowPoolDropdown] = useState<boolean>(false);
-  const [histogramTickRange, setHistogramTickRange] = useState<number>(60);
+  const [histogramTickRange, setHistogramTickRange] = useState<number>(100);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Animated stats state and refs
