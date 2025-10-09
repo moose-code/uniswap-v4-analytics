@@ -11,7 +11,7 @@ import {
   RECENT_MODIFY_LIQUIDITY_QUERY,
   POOLS_QUERY,
 } from "@/lib/graphql";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import { Copy, ExternalLink } from "lucide-react";
 import { getAmount0, getAmount1 } from "@/lib/liquidityMath/liquidityAmounts";
 import { TickMath } from "@/lib/liquidityMath/tickMath";
@@ -69,17 +69,19 @@ type Tick = {
 };
 
 const DEFAULT_POOL_ID =
-  "1_0x20c3a15e34e5d88aeba004b0753af69e4f6bea80eae2263f7a92e919cd33cc56";
+  "130_0x3258f413c7a88cda2fa8709a589d221a80f6574f63df5a5b6774485d8acc39d9";
 
 // Helper functions from Pulse page
 const formatUSD = (value: string): string => {
   const num = parseFloat(value);
-  if (num >= 1_000_000) {
-    return `$${(num / 1_000_000).toFixed(2)}M`;
-  } else if (num >= 1_000) {
-    return `$${(num / 1_000).toFixed(2)}K`;
+  const sign = num < 0 ? "-" : "";
+  const absNum = Math.abs(num);
+  if (absNum >= 1_000_000) {
+    return `${sign}$${(absNum / 1_000_000).toFixed(2)}M`;
+  } else if (absNum >= 1_000) {
+    return `${sign}$${(absNum / 1_000).toFixed(2)}K`;
   } else {
-    return `$${num.toFixed(2)}`;
+    return `${sign}$${absNum.toFixed(2)}`;
   }
 };
 
@@ -188,58 +190,101 @@ const copyToClipboard = (text: string) => {
 // Pool-specific Recent Swaps Component
 function PoolRecentSwaps({ poolId }: { poolId: string }) {
   const [swaps, setSwaps] = useState<any[]>([]);
+  const [pendingSwaps, setPendingSwaps] = useState<any[]>([]);
+  const prevSwapsRef = useRef<any[]>([]);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstLoadRef = useRef<boolean>(true);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const processNextPendingSwap = useCallback(() => {
+    if (isPaused) return;
+    setPendingSwaps((current) => {
+      if (current.length === 0) return current;
+      const nextSwap = current[0];
+      const remaining = current.slice(1);
+      setSwaps((prev) => {
+        if (prev.some((s) => s.id === nextSwap.id)) return prev;
+        return [nextSwap, ...prev.slice(0, 14)];
+      });
+      if (remaining.length > 0) {
+        const timeout = Math.max(50, 250 - remaining.length * 10);
+        animationTimeoutRef.current = setTimeout(
+          processNextPendingSwap,
+          timeout
+        );
+      }
+      return remaining;
+    });
+  }, [isPaused]);
 
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
-      // Skip if poolId is empty or invalid
       if (!poolId || !poolId.includes("_")) {
-        if (isMounted) {
-          setError("Invalid pool ID");
-        }
+        if (isMounted) setError("Invalid pool ID");
         return;
       }
-
       try {
         const data = await graphqlClient.request<{ Swap: any[] }>(
           RECENT_SWAPS_BY_POOL_QUERY,
-          {
-            poolId,
-            limit: 20,
-          }
+          { poolId, limit: 30 }
         );
-
         if (!isMounted) return;
-
         const swapsWithIds = data.Swap.map((swap: any) => ({
           ...swap,
           uniqueId: generateUniqueId(swap.id),
         }));
 
-        setSwaps(swapsWithIds);
+        if (isFirstLoadRef.current) {
+          setSwaps(swapsWithIds.slice(0, 15));
+          isFirstLoadRef.current = false;
+        } else {
+          const newOnes = swapsWithIds.filter(
+            (s) => !prevSwapsRef.current.some((p) => p.id === s.id)
+          );
+          if (newOnes.length > 0) {
+            setPendingSwaps((current) => {
+              const existingIds = new Set(current.map((s) => s.id));
+              const filtered = newOnes.filter((s) => !existingIds.has(s.id));
+              return [...current, ...filtered];
+            });
+          }
+        }
+        prevSwapsRef.current = swapsWithIds;
         setError(null);
       } catch (err) {
         console.error("Error fetching pool swaps for pool:", poolId, err);
-        if (isMounted) {
-          setError("Failed to fetch swaps for this pool");
-        }
+        if (isMounted) setError("Failed to fetch swaps for this pool");
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
-    const intervalId = setInterval(fetchData, 5000);
+    const intervalId = setInterval(fetchData, 1000);
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
     };
   }, [poolId]);
+
+  useEffect(() => {
+    if (pendingSwaps.length > 0 && !isPaused && !animationTimeoutRef.current) {
+      animationTimeoutRef.current = setTimeout(() => {
+        processNextPendingSwap();
+        animationTimeoutRef.current = null;
+      }, 100);
+    }
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, [pendingSwaps, isPaused, processNextPendingSwap]);
 
   const getSwapTimestamp = (timestamp: string) => {
     const swapTime = new Date(parseInt(timestamp) * 1000);
@@ -264,7 +309,12 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
         </div>
       </div>
 
-      <div className="max-h-[400px] overflow-y-auto p-2">
+      <div
+        className="md:max-h-[280px] max-h-[240px] overflow-y-auto p-1.5 relative"
+        style={{ scrollBehavior: "smooth" }}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
         {loading ? (
           <div className="flex items-center justify-center p-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -272,73 +322,116 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
         ) : error ? (
           <div className="text-red-500 p-4 text-center text-sm">{error}</div>
         ) : (
-          <div className="space-y-1.5">
-            {swaps.map((swap) => {
-              const chainId = extractChainId(swap.chainId);
-              const networkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
-              const token0Symbol = swap.token0.symbol || "Token0";
-              const token1Symbol = swap.token1.symbol || "Token1";
-              const formattedAmount = formatUSD(swap.amountUSD);
-              const timestamp = getSwapTimestamp(swap.timestamp);
+          <div className="space-y-1">
+            <AnimatePresence initial={false}>
+              {swaps.map((swap) => {
+                const chainId = extractChainId(swap.chainId);
+                const networkName =
+                  NETWORK_NAMES[chainId] || `Chain ${chainId}`;
+                const token0Symbol = swap.token0.symbol || "Token0";
+                const token1Symbol = swap.token1.symbol || "Token1";
+                const formattedAmount = formatUSD(swap.amountUSD);
+                const timestamp = getSwapTimestamp(swap.timestamp);
 
-              return (
-                <div
-                  key={swap.uniqueId}
-                  className="bg-secondary/30 rounded-lg p-2 hover:bg-secondary/50 transition-colors group"
-                >
-                  <div className="flex justify-between items-center mb-0.5">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {timestamp}
-                    </div>
-                    <div className="text-xs bg-secondary/50 px-2 py-0.5 rounded-full">
-                      {networkName}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 font-medium text-sm">
-                      {token0Symbol} → {token1Symbol}
-                    </div>
-                    <div className="text-sm font-mono text-pink-500">
-                      {formattedAmount}
-                    </div>
-                  </div>
-
-                  <div className="text-xs mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block hidden">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span className="whitespace-nowrap font-medium">Tx:</span>
-                      <span className="text-xs font-mono">
-                        {swap.transaction.substring(0, 6)}...
-                        {swap.transaction.substring(
-                          swap.transaction.length - 4
-                        )}
-                      </span>
-                      <div className="flex">
-                        <button
-                          className="p-1 hover:bg-pink-500/10 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(swap.transaction);
-                          }}
-                          title="Copy transaction hash"
-                        >
-                          <Copy size={11} className="text-pink-500" />
-                        </button>
-                        <a
-                          href={getBlockExplorerUrl(chainId, swap.transaction)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 hover:bg-pink-500/10 rounded-full"
-                          onClick={(e) => e.stopPropagation()}
-                          title="View on block explorer"
-                        >
-                          <ExternalLink size={11} className="text-pink-500" />
-                        </a>
+                return (
+                  <motion.div
+                    key={`swap_${swap.uniqueId}`}
+                    className="bg-secondary/30 rounded-lg p-1.5 overflow-hidden hover:bg-secondary/50 transition-colors group"
+                    initial={{
+                      opacity: 0,
+                      y: -20,
+                      backgroundColor: "rgba(236, 72, 153, 0.2)",
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      backgroundColor: "rgba(0, 0, 0, 0.1)",
+                      transition: {
+                        backgroundColor: { delay: 0.3, duration: 0.5 },
+                      },
+                    }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 30,
+                    }}
+                    layout="position"
+                  >
+                    <div className="flex justify-between items-center mb-0.5">
+                      <div className="text-[11px] font-medium text-muted-foreground">
+                        {timestamp}
+                      </div>
+                      <div className="text-[10px] bg-secondary/50 px-2 py-0.5 rounded-full">
+                        {networkName}
                       </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 font-medium text-[11px]">
+                        {token0Symbol} → {token1Symbol}
+                      </div>
+                      <motion.div
+                        className="text-[11px] font-mono text-pink-500"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: [0.8, 1.1, 1] }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {formattedAmount}
+                      </motion.div>
+                    </div>
+
+                    <motion.div
+                      className="text-[11px] mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block"
+                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: { duration: 0.2 },
+                      }}
+                      style={{ display: "none", transition: "all 0.2s" }}
+                    >
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <span className="whitespace-nowrap font-medium">
+                          Tx:
+                        </span>
+                        <span className="text-[11px] font-mono">
+                          {swap.transaction.substring(0, 6)}...
+                          {swap.transaction.substring(
+                            swap.transaction.length - 4
+                          )}
+                        </span>
+                        <div className="flex">
+                          <button
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(swap.transaction);
+                            }}
+                            title="Copy transaction hash"
+                          >
+                            <Copy size={11} className="text-pink-500" />
+                          </button>
+                          <a
+                            href={getBlockExplorerUrl(
+                              chainId,
+                              swap.transaction
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => e.stopPropagation()}
+                            title="View on block explorer"
+                          >
+                            <ExternalLink size={11} className="text-pink-500" />
+                          </a>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -349,22 +442,44 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
 // Pool-specific Recent Liquidity Component
 function PoolRecentLiquidity({ poolId }: { poolId: string }) {
   const [events, setEvents] = useState<any[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<any[]>([]);
+  const prevEventsRef = useRef<any[]>([]);
+  const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstLoadRef = useRef<boolean>(true);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const processNextPendingEvent = useCallback(() => {
+    if (isPaused) return;
+    setPendingEvents((current) => {
+      if (current.length === 0) return current;
+      const next = current[0];
+      const remaining = current.slice(1);
+      setEvents((prev) => {
+        if (prev.some((e) => e.id === next.id)) return prev;
+        return [next, ...prev.slice(0, 14)];
+      });
+      if (remaining.length > 0) {
+        const timeout = Math.max(50, 250 - remaining.length * 10);
+        animationTimeoutRef.current = setTimeout(
+          processNextPendingEvent,
+          timeout
+        );
+      }
+      return remaining;
+    });
+  }, [isPaused]);
 
   useEffect(() => {
     let isMounted = true;
     const fetchData = async () => {
-      // Skip if poolId is empty or invalid
       if (!poolId || !poolId.includes("_")) {
-        if (isMounted) {
-          setError("Invalid pool ID");
-        }
+        if (isMounted) setError("Invalid pool ID");
         return;
       }
 
       try {
-        // We need to modify the query to filter by pool
         const POOL_MODIFY_LIQUIDITY_QUERY = `
           query poolModifyLiquidity($poolId: String!, $limit: Int!) {
             ModifyLiquidity(
@@ -406,10 +521,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
 
         const data = await graphqlClient.request<{ ModifyLiquidity: any[] }>(
           POOL_MODIFY_LIQUIDITY_QUERY,
-          {
-            poolId,
-            limit: 20,
-          }
+          { poolId, limit: 30 }
         );
 
         if (!isMounted) return;
@@ -419,7 +531,23 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
           uniqueId: generateUniqueId(event.id),
         }));
 
-        setEvents(eventsWithIds);
+        if (isFirstLoadRef.current) {
+          setEvents(eventsWithIds.slice(0, 15));
+          isFirstLoadRef.current = false;
+        } else {
+          const newOnes = eventsWithIds.filter(
+            (e) => !prevEventsRef.current.some((p) => p.id === e.id)
+          );
+          if (newOnes.length > 0) {
+            setPendingEvents((current) => {
+              const existingIds = new Set(current.map((e) => e.id));
+              const filtered = newOnes.filter((e) => !existingIds.has(e.id));
+              return [...current, ...filtered];
+            });
+          }
+        }
+
+        prevEventsRef.current = eventsWithIds;
         setError(null);
       } catch (err) {
         console.error(
@@ -427,24 +555,36 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
           poolId,
           err
         );
-        if (isMounted) {
+        if (isMounted)
           setError("Failed to fetch liquidity events for this pool");
-        }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
-    const intervalId = setInterval(fetchData, 5000);
+    const intervalId = setInterval(fetchData, 1000);
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
     };
   }, [poolId]);
+
+  useEffect(() => {
+    if (pendingEvents.length > 0 && !isPaused && !animationTimeoutRef.current) {
+      animationTimeoutRef.current = setTimeout(() => {
+        processNextPendingEvent();
+        animationTimeoutRef.current = null;
+      }, 100);
+    }
+    return () => {
+      if (animationTimeoutRef.current) {
+        clearTimeout(animationTimeoutRef.current);
+        animationTimeoutRef.current = null;
+      }
+    };
+  }, [pendingEvents, isPaused, processNextPendingEvent]);
 
   const getEventTimestamp = (timestamp: string) => {
     const eventTime = new Date(parseInt(timestamp) * 1000);
@@ -471,7 +611,12 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
         </div>
       </div>
 
-      <div className="max-h-[400px] overflow-y-auto p-2">
+      <div
+        className="md:max-h-[280px] max-h-[240px] overflow-y-auto p-1.5 relative"
+        style={{ scrollBehavior: "smooth" }}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
         {loading ? (
           <div className="flex items-center justify-center p-4">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
@@ -479,133 +624,184 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
         ) : error ? (
           <div className="text-red-500 p-4 text-center text-sm">{error}</div>
         ) : (
-          <div className="space-y-1.5">
-            {events.map((event) => {
-              const chainId = extractChainId(event.chainId);
-              const networkName = NETWORK_NAMES[chainId] || `Chain ${chainId}`;
-              const token0Symbol = event.token0.symbol || "Token0";
-              const token1Symbol = event.token1.symbol || "Token1";
-              const formattedAmount = formatUSD(event.amountUSD);
-              const timestamp = getEventTimestamp(event.timestamp);
-              const poolName = event.pool?.name || "Unknown Pool";
+          <div className="space-y-1">
+            <AnimatePresence initial={false}>
+              {events.map((event) => {
+                const chainId = extractChainId(event.chainId);
+                const networkName =
+                  NETWORK_NAMES[chainId] || `Chain ${chainId}`;
+                const token0Symbol = event.token0.symbol || "Token0";
+                const token1Symbol = event.token1.symbol || "Token1";
+                const formattedAmount = formatUSD(event.amountUSD);
+                const timestamp = getEventTimestamp(event.timestamp);
+                const poolName = event.pool?.name || "Unknown Pool";
 
-              const isAddLiquidity = parseFloat(event.amount) > 0;
-              const eventTypeLabel = isAddLiquidity ? "Add" : "Remove";
-              const eventTypeColor = isAddLiquidity
-                ? "text-green-500"
-                : "text-red-500";
+                const isAddLiquidity = parseFloat(event.amount) > 0;
+                const eventTypeLabel = isAddLiquidity ? "Add" : "Remove";
+                const eventTypeColor = isAddLiquidity
+                  ? "text-green-500"
+                  : "text-red-500";
 
-              return (
-                <div
-                  key={event.uniqueId}
-                  className="bg-secondary/30 rounded-lg p-2 hover:bg-secondary/50 transition-colors group"
-                >
-                  <div className="flex justify-between items-center mb-0.5">
-                    <div className="text-xs font-medium text-muted-foreground">
-                      {timestamp}
-                    </div>
-                    <div className="text-xs bg-secondary/50 px-2 py-0.5 rounded-full">
-                      {networkName}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 text-sm">
-                      <span className={`font-medium ${eventTypeColor}`}>
-                        {eventTypeLabel}
-                      </span>
-                      <span className="ml-1 font-medium">
-                        {token0Symbol}/{token1Symbol}
-                      </span>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {poolName}
+                return (
+                  <motion.div
+                    key={event.uniqueId}
+                    className="bg-secondary/30 rounded-lg p-1 overflow-hidden hover:bg-secondary/50 transition-colors group"
+                    initial={{
+                      opacity: 0,
+                      y: -20,
+                      backgroundColor: "rgba(236, 72, 153, 0.2)",
+                    }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      backgroundColor: "rgba(0, 0, 0, 0.1)",
+                      transition: {
+                        backgroundColor: { delay: 0.3, duration: 0.5 },
+                      },
+                    }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{
+                      duration: 0.3,
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 30,
+                    }}
+                    layout="position"
+                  >
+                    <div className="flex justify-between items-center mb-0">
+                      <div className="text-[10px] leading-tight font-medium text-muted-foreground">
+                        {timestamp}
+                      </div>
+                      <div className="text-[10px] leading-tight bg-secondary/50 px-2 py-0.5 rounded-full">
+                        {networkName}
                       </div>
                     </div>
-                    <div className="text-sm font-mono text-pink-500">
-                      {formattedAmount}
-                    </div>
-                  </div>
-
-                  <div className="text-xs mt-1 pt-1 border-t border-border/20 group-hover:!block hidden">
-                    {(() => {
-                      const amount0 = formatTokenAmount(
-                        event.amount0,
-                        event.token0.decimals
-                      );
-                      const amount1 = formatTokenAmount(
-                        event.amount1,
-                        event.token1.decimals
-                      );
-
-                      const amount0Value = parseFloat(event.amount0);
-                      const amount1Value = parseFloat(event.amount1);
-
-                      const token0Direction =
-                        amount0Value > 0 ? "+" : amount0Value < 0 ? "-" : "";
-                      const token1Direction =
-                        amount1Value > 0 ? "+" : amount1Value < 0 ? "-" : "";
-
-                      const token0Color =
-                        amount0Value > 0
-                          ? "text-green-500"
-                          : amount0Value < 0
-                            ? "text-red-500"
-                            : "text-muted-foreground";
-                      const token1Color =
-                        amount1Value > 0
-                          ? "text-green-500"
-                          : amount1Value < 0
-                            ? "text-red-500"
-                            : "text-muted-foreground";
-
-                      return (
-                        <>
-                          <div className={token0Color}>
-                            {token0Direction} {amount0} {token0Symbol}
-                          </div>
-                          <div className={token1Color}>
-                            {token1Direction} {amount1} {token1Symbol}
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="text-xs mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block hidden">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <span className="whitespace-nowrap font-medium">Tx:</span>
-                      <span className="text-xs font-mono">
-                        {event.transaction.substring(0, 6)}...
-                        {event.transaction.substring(
-                          event.transaction.length - 4
-                        )}
-                      </span>
-                      <div className="flex">
-                        <button
-                          className="p-1 hover:bg-pink-500/10 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(event.transaction);
-                          }}
-                          title="Copy transaction hash"
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 leading-tight">
+                        <span
+                          className={`font-medium text-[11px] leading-tight ${eventTypeColor}`}
                         >
-                          <Copy size={11} className="text-pink-500" />
-                        </button>
-                        <a
-                          href={getBlockExplorerUrl(chainId, event.transaction)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 hover:bg-pink-500/10 rounded-full"
-                          onClick={(e) => e.stopPropagation()}
-                          title="View on block explorer"
-                        >
-                          <ExternalLink size={11} className="text-pink-500" />
-                        </a>
+                          {eventTypeLabel}
+                        </span>
+                        <span className="ml-1 font-medium text-[11px] leading-tight">
+                          {token0Symbol}/{token1Symbol}
+                        </span>
                       </div>
+                      <motion.div
+                        className="text-[10px] font-mono text-pink-500"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: [0.8, 1.1, 1] }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {formattedAmount}
+                      </motion.div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+
+                    <motion.div
+                      className="text-[11px] mt-1 pt-1 border-t border-border/20 group-hover:!block"
+                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: { duration: 0.2 },
+                      }}
+                      style={{ display: "none", transition: "all 0.2s" }}
+                    >
+                      {(() => {
+                        const amount0 = formatTokenAmount(
+                          event.amount0,
+                          event.token0.decimals
+                        );
+                        const amount1 = formatTokenAmount(
+                          event.amount1,
+                          event.token1.decimals
+                        );
+
+                        const amount0Value = parseFloat(event.amount0);
+                        const amount1Value = parseFloat(event.amount1);
+
+                        const token0Direction =
+                          amount0Value > 0 ? "+" : amount0Value < 0 ? "-" : "";
+                        const token1Direction =
+                          amount1Value > 0 ? "+" : amount1Value < 0 ? "-" : "";
+
+                        const token0Color =
+                          amount0Value > 0
+                            ? "text-green-500"
+                            : amount0Value < 0
+                              ? "text-red-500"
+                              : "text-muted-foreground";
+                        const token1Color =
+                          amount1Value > 0
+                            ? "text-green-500"
+                            : amount1Value < 0
+                              ? "text-red-500"
+                              : "text-muted-foreground";
+
+                        return (
+                          <>
+                            <div className={token0Color}>
+                              {token0Direction} {amount0} {token0Symbol}
+                            </div>
+                            <div className={token1Color}>
+                              {token1Direction} {amount1} {token1Symbol}
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </motion.div>
+
+                    <motion.div
+                      className="text-[10px] mt-1 pt-1 border-t border-border/20 text-muted-foreground group-hover:!block"
+                      initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                      animate={{
+                        height: "auto",
+                        opacity: 1,
+                        transition: { duration: 0.2 },
+                      }}
+                      style={{ display: "none", transition: "all 0.2s" }}
+                    >
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <span className="whitespace-nowrap font-medium">
+                          Tx:
+                        </span>
+                        <span className="text-[10px] font-mono">
+                          {event.transaction.substring(0, 6)}...
+                          {event.transaction.substring(
+                            event.transaction.length - 4
+                          )}
+                        </span>
+                        <div className="flex">
+                          <button
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(event.transaction);
+                            }}
+                            title="Copy transaction hash"
+                          >
+                            <Copy size={11} className="text-pink-500" />
+                          </button>
+                          <a
+                            href={getBlockExplorerUrl(
+                              chainId,
+                              event.transaction
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 hover:bg-pink-500/10 rounded-full"
+                            onClick={(e) => e.stopPropagation()}
+                            title="View on block explorer"
+                          >
+                            <ExternalLink size={11} className="text-pink-500" />
+                          </a>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -625,8 +821,30 @@ export function Orderbook() {
   const [refreshNonce, setRefreshNonce] = useState<number>(0);
   const [topPools, setTopPools] = useState<any[]>([]);
   const [showPoolDropdown, setShowPoolDropdown] = useState<boolean>(false);
-  const [histogramTickRange, setHistogramTickRange] = useState<number>(60);
+  const [histogramTickRange, setHistogramTickRange] = useState<number>(100);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Animated stats state and refs
+  const [poolStats, setPoolStats] = useState({
+    tvlUSD: 0,
+    volumeUSD: 0,
+    feesUSD: 0,
+    txCount: 0,
+  });
+  const tvlRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const feesRef = useRef<HTMLDivElement>(null);
+  const txRef = useRef<HTMLDivElement>(null);
+  const previousStatsRef = useRef({
+    tvlUSD: 0,
+    volumeUSD: 0,
+    feesUSD: 0,
+    txCount: 0,
+  });
+
+  // Price animation refs
+  const mainPriceRef = useRef<HTMLDivElement>(null);
+  const previousPriceRef = useRef<number>(0);
 
   // fetch top pools for dropdown
   useEffect(() => {
@@ -719,6 +937,98 @@ export function Orderbook() {
       mounted = false;
     };
   }, [poolId, refreshNonce]);
+
+  // Seed animated stats when pool changes
+  useEffect(() => {
+    if (!pool) return;
+    const tvlUSD = parseFloat(pool.totalValueLockedUSD || "0");
+    const volumeUSD = parseFloat(pool.volumeUSD || "0");
+    const feesUSD = parseFloat(pool.feesUSD || "0");
+    const txCount = parseFloat(pool.txCount || "0");
+    setPoolStats({ tvlUSD, volumeUSD, feesUSD, txCount });
+    previousStatsRef.current = { tvlUSD, volumeUSD, feesUSD, txCount };
+  }, [pool?.id]);
+
+  // Poll stats and price every 1s
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+    const fetchStats = async () => {
+      try {
+        const data = await graphqlClient.request<{ Pool: Pool[] }>(
+          POOL_BY_ID_QUERY,
+          { poolId }
+        );
+        if (!mounted) return;
+        const p = data.Pool?.[0] ?? null;
+        if (p) {
+          const tvlUSD = parseFloat(p.totalValueLockedUSD || "0");
+          const volumeUSD = parseFloat(p.volumeUSD || "0");
+          const feesUSD = parseFloat(p.feesUSD || "0");
+          const txCount = parseFloat(p.txCount || "0");
+          setPoolStats({ tvlUSD, volumeUSD, feesUSD, txCount });
+          // Update pool to get latest tick/price
+          setPool(p);
+        }
+      } catch {
+      } finally {
+        if (mounted) {
+          timeoutId = setTimeout(fetchStats, 1000);
+        }
+      }
+    };
+    fetchStats();
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [poolId]);
+
+  // Animate counters on change
+  useEffect(() => {
+    const formatCurrency = (v: number) => `$${Math.round(v).toLocaleString()}`;
+    const run = (
+      ref: React.RefObject<HTMLDivElement>,
+      from: number,
+      to: number,
+      formatter: (n: number) => string
+    ) => {
+      if (!ref.current) return () => {};
+      const controls = animate(from, to, {
+        duration: 1.2,
+        ease: [0.32, 0.72, 0, 1],
+        onUpdate(value) {
+          if (ref.current) ref.current.textContent = formatter(value);
+        },
+      });
+      return () => controls.stop();
+    };
+    const cleanups = [
+      run(
+        tvlRef,
+        previousStatsRef.current.tvlUSD,
+        poolStats.tvlUSD,
+        formatCurrency
+      ),
+      run(
+        volumeRef,
+        previousStatsRef.current.volumeUSD,
+        poolStats.volumeUSD,
+        formatCurrency
+      ),
+      run(
+        feesRef,
+        previousStatsRef.current.feesUSD,
+        poolStats.feesUSD,
+        formatCurrency
+      ),
+      run(txRef, previousStatsRef.current.txCount, poolStats.txCount, (v) =>
+        Math.round(v).toLocaleString()
+      ),
+    ];
+    previousStatsRef.current = { ...poolStats };
+    return () => cleanups.forEach((c) => c());
+  }, [poolStats]);
 
   // fetch ticks around current tick
   useEffect(() => {
@@ -1143,48 +1453,98 @@ export function Orderbook() {
             )}
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid with animated counters */}
           <div className="grid grid-cols-4 gap-3">
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 TVL
               </div>
-              <div className="text-sm font-bold">
-                {pool.totalValueLockedUSD
-                  ? `$${Number(pool.totalValueLockedUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={tvlRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.tvlUSD > previousStatsRef.current.tvlUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.tvlUSD > previousStatsRef.current.tvlUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.tvlUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Volume
               </div>
-              <div className="text-sm font-bold">
-                {pool.volumeUSD
-                  ? `$${Number(pool.volumeUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={volumeRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.volumeUSD > previousStatsRef.current.volumeUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.volumeUSD > previousStatsRef.current.volumeUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.volumeUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Fees
               </div>
-              <div className="text-sm font-bold">
-                {pool.feesUSD
-                  ? `$${Number(pool.feesUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={feesRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.feesUSD > previousStatsRef.current.feesUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.feesUSD > previousStatsRef.current.feesUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.feesUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Transactions
               </div>
-              <div className="text-sm font-bold">
-                {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
-              </div>
+              <motion.div
+                ref={txRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.txCount > previousStatsRef.current.txCount
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.txCount > previousStatsRef.current.txCount
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                {poolStats.txCount.toLocaleString()}
+              </motion.div>
             </div>
           </div>
 
@@ -1230,16 +1590,15 @@ export function Orderbook() {
         />
       </div>
 
-      {/* Commented out: Recent Pool Activity */}
-      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PoolRecentSwaps poolId={poolId} />
         <PoolRecentLiquidity poolId={poolId} />
-      </div> */}
+      </div>
 
       {/* Commented out: Tick Liquidity Table */}
       {/* <div>
         <div className="text-xs mb-2">Tick Liquidity</div>
-        <div className="border border-border/50 rounded-md overflow-hidden">
+          <div className="border border-border/50 rounded-md overflow-hidden">
           <div className="max-h-72 overflow-auto">
             <div
               className="grid text-xs px-2 py-1 bg-secondary/80 sticky top-0 z-10"
@@ -1265,14 +1624,14 @@ export function Orderbook() {
                 return activeTick === row.tickIdx;
               })();
               return (
-                <motion.div
+                  <motion.div
                   key={`tick-${row.tickIdx}`}
                   className={`grid px-2 py-1 text-xs ${
                     isCurrentTick
                       ? "bg-yellow-400/30 border-l-4 border-yellow-500 font-semibold text-yellow-900 dark:text-yellow-100"
                       : "hover:bg-secondary/20"
                   }`}
-                  style={{
+                        style={{
                     gridTemplateColumns:
                       "70px 90px 120px 120px 140px 140px 180px",
                   }}
@@ -1280,41 +1639,41 @@ export function Orderbook() {
                   <div>{row.tickIdx}</div>
                   <div className="text-right">
                     {isFinite(row.price) ? row.price.toFixed(2) : "-"}
-                  </div>
+                    </div>
                   <div className="text-right">
                     {isFinite(row.netLiquidity)
                       ? row.netLiquidity.toLocaleString()
                       : "-"}
-                  </div>
+            </div>
                   <div className="text-right">
                     {isFinite(row.grossLiquidity)
                       ? row.grossLiquidity.toLocaleString()
                       : "-"}
-                  </div>
+          </div>
                   <div className="text-right">
                     {row.amount0 != null
                       ? row.amount0.toLocaleString(undefined, {
                           maximumFractionDigits: 6,
                         })
                       : "-"}
-                  </div>
+        </div>
                   <div className="text-right">
                     {row.amount1 != null
                       ? row.amount1.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
                         })
                       : "-"}
-                  </div>
+            </div>
                   <div className="text-right">
                     {row.usdValueGross != null
                       ? `$${row.usdValueGross.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                       : "-"}
-                  </div>
-                </motion.div>
+                    </div>
+                  </motion.div>
               );
             })}
+            </div>
           </div>
-        </div>
       </div> */}
     </div>
   );

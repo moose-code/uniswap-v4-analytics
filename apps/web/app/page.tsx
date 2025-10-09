@@ -57,7 +57,7 @@ const TABS = [
   { id: "hooks", label: "Hooks" },
   { id: "hook-info", label: "Hook Information" },
   { id: "arbitrage", label: "Arbitrage" },
-  { id: "orderbook", label: "Orderbook" },
+  { id: "orderbook", label: "Orderbook", isNew: true },
   { id: "apis", label: "APIs" },
 ];
 

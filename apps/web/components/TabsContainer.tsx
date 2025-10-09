@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 interface Tab {
   id: string;
   label: string;
+  isNew?: boolean;
 }
 
 interface TabsContainerProps {
@@ -43,7 +44,14 @@ export function TabsContainer({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab.label}
+              <span className="inline-flex items-baseline gap-0.5">
+                {tab.label}
+                {tab.isNew && (
+                  <span className="px-0.5 py-[1px] text-[7px] leading-none font-bold uppercase tracking-tight bg-pink-500/20 text-pink-500 rounded border border-pink-500/30 -translate-y-2 inline-block">
+                    New
+                  </span>
+                )}
+              </span>
               {activeTab === tab.id && (
                 <motion.div
                   layoutId="activeTab"
