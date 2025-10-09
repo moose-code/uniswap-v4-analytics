@@ -842,6 +842,10 @@ export function Orderbook() {
     txCount: 0,
   });
 
+  // Price animation refs
+  const mainPriceRef = useRef<HTMLDivElement>(null);
+  const previousPriceRef = useRef<number>(0);
+
   // fetch top pools for dropdown
   useEffect(() => {
     let mounted = true;
@@ -945,7 +949,7 @@ export function Orderbook() {
     previousStatsRef.current = { tvlUSD, volumeUSD, feesUSD, txCount };
   }, [pool?.id]);
 
-  // Poll stats every 1s
+  // Poll stats and price every 1s
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout | null = null;
@@ -963,6 +967,8 @@ export function Orderbook() {
           const feesUSD = parseFloat(p.feesUSD || "0");
           const txCount = parseFloat(p.txCount || "0");
           setPoolStats({ tvlUSD, volumeUSD, feesUSD, txCount });
+          // Update pool to get latest tick/price
+          setPool(p);
         }
       } catch {
       } finally {
@@ -1219,7 +1225,7 @@ export function Orderbook() {
           usdValueGross = null;
         }
       }
-    return {
+      return {
         tickIdx,
         price,
         netLiquidity,
@@ -1326,10 +1332,10 @@ export function Orderbook() {
             {/* Compact Pool Picker on the right */}
             <div className="flex flex-col items-end gap-1">
               <div ref={dropdownRef} className="relative">
-        <input
+                <input
                   className="w-[360px] max-w-[48vw] px-2 py-1 rounded-md border border-border/50 bg-background pr-14 text-xs font-mono"
-          value={poolId}
-          onChange={(e) => setPoolId(e.target.value)}
+                  value={poolId}
+                  onChange={(e) => setPoolId(e.target.value)}
                   placeholder="chainId_poolId (e.g. 1_0x...)"
                 />
                 <button
@@ -1373,11 +1379,11 @@ export function Orderbook() {
                 >
                   ↻
                 </button>
-      </div>
-      <div className="text-[10px] text-muted-foreground">
+              </div>
+              <div className="text-[10px] text-muted-foreground">
                 Enter chainId_poolId to view any pool
-      </div>
-          </div>
+              </div>
+            </div>
           </div>
 
           {/* Price Section */}
@@ -1388,19 +1394,19 @@ export function Orderbook() {
                   {(invertPrices && currentPrice > 0
                     ? 1 / currentPrice
                     : currentPrice
-              ).toLocaleString(undefined, {
-                maximumFractionDigits: 6,
-              })}
-            </div>
-            <button
+                  ).toLocaleString(undefined, {
+                    maximumFractionDigits: 6,
+                  })}
+                </div>
+                <button
                   className="px-2 py-0.5 text-xs font-medium rounded border border-border/50 hover:bg-secondary/50 transition-colors"
-              onClick={() => setInvertPrices((v) => !v)}
-            >
-              {invertPrices
+                  onClick={() => setInvertPrices((v) => !v)}
+                >
+                  {invertPrices
                     ? `${token0?.symbol}/${token1?.symbol}`
                     : `${token1?.symbol}/${token0?.symbol}`}
-            </button>
-          </div>
+                </button>
+              </div>
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div>
@@ -1431,7 +1437,7 @@ export function Orderbook() {
                   <div className="text-base font-semibold">
                     $
                     {lastPriceUSD.toLocaleString(undefined, {
-                  maximumFractionDigits: 4,
+                      maximumFractionDigits: 4,
                     })}
                   </div>
                 )}
@@ -1439,7 +1445,7 @@ export function Orderbook() {
                   <div className="text-xs text-muted-foreground">
                     {token1?.symbol} ≈ $
                     {token1USD.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </div>
                 )}
@@ -1470,7 +1476,7 @@ export function Orderbook() {
               >
                 ${poolStats.tvlUSD.toLocaleString()}
               </motion.div>
-                    </div>
+            </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
@@ -1493,7 +1499,7 @@ export function Orderbook() {
               >
                 ${poolStats.volumeUSD.toLocaleString()}
               </motion.div>
-                </div>
+            </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
@@ -1516,12 +1522,12 @@ export function Orderbook() {
               >
                 ${poolStats.feesUSD.toLocaleString()}
               </motion.div>
-                    </div>
+            </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Transactions
-                </div>
+              </div>
               <motion.div
                 ref={txRef}
                 className="text-sm font-bold"
@@ -1539,8 +1545,8 @@ export function Orderbook() {
               >
                 {poolStats.txCount.toLocaleString()}
               </motion.div>
-              </div>
             </div>
+          </div>
 
           {/* Hook Address */}
           {pool.hooks &&
@@ -1548,17 +1554,17 @@ export function Orderbook() {
               <div className="rounded-lg border border-border/30 bg-secondary/10 p-4">
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                   Hook Contract
-            </div>
+                </div>
                 <div className="font-mono text-sm break-all text-foreground/90">
                   {pool.hooks}
-          </div>
+                </div>
               </div>
             )}
         </div>
       )}
 
       {/* Liquidity Histogram (Recharts) */}
-        <div>
+      <div>
         <div className="text-xs mb-2">Liquidity Distribution</div>
         <LiquidityHistogram
           data={displayTickRows.map((r) => {
