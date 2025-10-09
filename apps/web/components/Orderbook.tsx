@@ -11,7 +11,7 @@ import {
   RECENT_MODIFY_LIQUIDITY_QUERY,
   POOLS_QUERY,
 } from "@/lib/graphql";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import { Copy, ExternalLink } from "lucide-react";
 import { getAmount0, getAmount1 } from "@/lib/liquidityMath/liquidityAmounts";
 import { TickMath } from "@/lib/liquidityMath/tickMath";
@@ -628,6 +628,24 @@ export function Orderbook() {
   const [histogramTickRange, setHistogramTickRange] = useState<number>(60);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Animated stats state and refs
+  const [poolStats, setPoolStats] = useState({
+    tvlUSD: 0,
+    volumeUSD: 0,
+    feesUSD: 0,
+    txCount: 0,
+  });
+  const tvlRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef<HTMLDivElement>(null);
+  const feesRef = useRef<HTMLDivElement>(null);
+  const txRef = useRef<HTMLDivElement>(null);
+  const previousStatsRef = useRef({
+    tvlUSD: 0,
+    volumeUSD: 0,
+    feesUSD: 0,
+    txCount: 0,
+  });
+
   // fetch top pools for dropdown
   useEffect(() => {
     let mounted = true;
@@ -719,6 +737,96 @@ export function Orderbook() {
       mounted = false;
     };
   }, [poolId, refreshNonce]);
+
+  // Seed animated stats when pool changes
+  useEffect(() => {
+    if (!pool) return;
+    const tvlUSD = parseFloat(pool.totalValueLockedUSD || "0");
+    const volumeUSD = parseFloat(pool.volumeUSD || "0");
+    const feesUSD = parseFloat(pool.feesUSD || "0");
+    const txCount = parseFloat(pool.txCount || "0");
+    setPoolStats({ tvlUSD, volumeUSD, feesUSD, txCount });
+    previousStatsRef.current = { tvlUSD, volumeUSD, feesUSD, txCount };
+  }, [pool?.id]);
+
+  // Poll stats every 1s
+  useEffect(() => {
+    let mounted = true;
+    let timeoutId: NodeJS.Timeout | null = null;
+    const fetchStats = async () => {
+      try {
+        const data = await graphqlClient.request<{ Pool: Pool[] }>(
+          POOL_BY_ID_QUERY,
+          { poolId }
+        );
+        if (!mounted) return;
+        const p = data.Pool?.[0] ?? null;
+        if (p) {
+          const tvlUSD = parseFloat(p.totalValueLockedUSD || "0");
+          const volumeUSD = parseFloat(p.volumeUSD || "0");
+          const feesUSD = parseFloat(p.feesUSD || "0");
+          const txCount = parseFloat(p.txCount || "0");
+          setPoolStats({ tvlUSD, volumeUSD, feesUSD, txCount });
+        }
+      } catch {
+      } finally {
+        if (mounted) {
+          timeoutId = setTimeout(fetchStats, 1000);
+        }
+      }
+    };
+    fetchStats();
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [poolId]);
+
+  // Animate counters on change
+  useEffect(() => {
+    const formatCurrency = (v: number) => `$${Math.round(v).toLocaleString()}`;
+    const run = (
+      ref: React.RefObject<HTMLDivElement>,
+      from: number,
+      to: number,
+      formatter: (n: number) => string
+    ) => {
+      if (!ref.current) return () => {};
+      const controls = animate(from, to, {
+        duration: 1.2,
+        ease: [0.32, 0.72, 0, 1],
+        onUpdate(value) {
+          if (ref.current) ref.current.textContent = formatter(value);
+        },
+      });
+      return () => controls.stop();
+    };
+    const cleanups = [
+      run(
+        tvlRef,
+        previousStatsRef.current.tvlUSD,
+        poolStats.tvlUSD,
+        formatCurrency
+      ),
+      run(
+        volumeRef,
+        previousStatsRef.current.volumeUSD,
+        poolStats.volumeUSD,
+        formatCurrency
+      ),
+      run(
+        feesRef,
+        previousStatsRef.current.feesUSD,
+        poolStats.feesUSD,
+        formatCurrency
+      ),
+      run(txRef, previousStatsRef.current.txCount, poolStats.txCount, (v) =>
+        Math.round(v).toLocaleString()
+      ),
+    ];
+    previousStatsRef.current = { ...poolStats };
+    return () => cleanups.forEach((c) => c());
+  }, [poolStats]);
 
   // fetch ticks around current tick
   useEffect(() => {
@@ -1143,48 +1251,98 @@ export function Orderbook() {
             )}
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid with animated counters */}
           <div className="grid grid-cols-4 gap-3">
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 TVL
               </div>
-              <div className="text-sm font-bold">
-                {pool.totalValueLockedUSD
-                  ? `$${Number(pool.totalValueLockedUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={tvlRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.tvlUSD > previousStatsRef.current.tvlUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.tvlUSD > previousStatsRef.current.tvlUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.tvlUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Volume
               </div>
-              <div className="text-sm font-bold">
-                {pool.volumeUSD
-                  ? `$${Number(pool.volumeUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={volumeRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.volumeUSD > previousStatsRef.current.volumeUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.volumeUSD > previousStatsRef.current.volumeUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.volumeUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Fees
               </div>
-              <div className="text-sm font-bold">
-                {pool.feesUSD
-                  ? `$${Number(pool.feesUSD).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                  : "-"}
-              </div>
+              <motion.div
+                ref={feesRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.feesUSD > previousStatsRef.current.feesUSD
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.feesUSD > previousStatsRef.current.feesUSD
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                ${poolStats.feesUSD.toLocaleString()}
+              </motion.div>
             </div>
 
             <div className="rounded border border-border/40 bg-background/50 p-3 hover:border-border/60 transition-colors">
               <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
                 Transactions
               </div>
-              <div className="text-sm font-bold">
-                {pool.txCount ? Number(pool.txCount).toLocaleString() : "-"}
-              </div>
+              <motion.div
+                ref={txRef}
+                className="text-sm font-bold"
+                animate={{
+                  scale:
+                    poolStats.txCount > previousStatsRef.current.txCount
+                      ? [1, 1.04, 1]
+                      : 1,
+                  color:
+                    poolStats.txCount > previousStatsRef.current.txCount
+                      ? ["inherit", "hsl(142.1 76.2% 36.3%)", "inherit"]
+                      : "inherit",
+                }}
+                transition={{ duration: 0.3 }}
+              >
+                {poolStats.txCount.toLocaleString()}
+              </motion.div>
             </div>
           </div>
 
