@@ -187,8 +187,8 @@ const copyToClipboard = (text: string) => {
     });
 };
 
-// Pool-specific Recent Swaps Component
-function PoolRecentSwaps({ poolId }: { poolId: string }) {
+// Pool-specific Recent Swaps Component (Commented out due to performance issues)
+/* function PoolRecentSwaps({ poolId }: { poolId: string }) {
   const [swaps, setSwaps] = useState<any[]>([]);
   const [pendingSwaps, setPendingSwaps] = useState<any[]>([]);
   const prevSwapsRef = useRef<any[]>([]);
@@ -437,10 +437,10 @@ function PoolRecentSwaps({ poolId }: { poolId: string }) {
       </div>
     </div>
   );
-}
+} */
 
-// Pool-specific Recent Liquidity Component
-function PoolRecentLiquidity({ poolId }: { poolId: string }) {
+// Pool-specific Recent Liquidity Component (Commented out due to performance issues)
+/* function PoolRecentLiquidity({ poolId }: { poolId: string }) {
   const [events, setEvents] = useState<any[]>([]);
   const [pendingEvents, setPendingEvents] = useState<any[]>([]);
   const prevEventsRef = useRef<any[]>([]);
@@ -807,7 +807,7 @@ function PoolRecentLiquidity({ poolId }: { poolId: string }) {
       </div>
     </div>
   );
-}
+} */
 
 export function Orderbook() {
   const [poolId, setPoolId] = useState<string>(DEFAULT_POOL_ID);
@@ -1590,10 +1590,11 @@ export function Orderbook() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Commented out due to performance issues */}
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <PoolRecentSwaps poolId={poolId} />
         <PoolRecentLiquidity poolId={poolId} />
-      </div>
+      </div> */}
 
       {/* Commented out: Tick Liquidity Table */}
       {/* <div>
